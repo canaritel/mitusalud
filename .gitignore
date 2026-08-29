@@ -1,0 +1,28 @@
+# Entorno local y secretos
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# IDE y sistema operativo
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Salidas futuras de Java, Node y pruebas
+target/
+build/
+dist/
+node_modules/
+coverage/
+
+# Datos y artefactos personales
+data/
+uploads/
+backups/
+*.sqlite
+*.db
