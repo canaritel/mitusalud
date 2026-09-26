@@ -44,7 +44,7 @@ Los cinco documentos de análisis enumerados en el README son la referencia can�
 | L-12 | Prueba: rechazo del segundo propietario | L-11 | La prueba de integración intenta insertar un segundo `owner_account` y debe fallar. |
 | L-13 | Pruebas de acceso del propietario único | L-09, L-11 | **Revisada (pieza 3), pendiente de implementar.** Sustituye al perfil con dos propietarios: el propietario accede, otra identidad autenticada es rechazada y el acceso anónimo es rechazado. |
 | L-14 | `Observation` y restricciones | L-11 | Forma del valor, obligatoriedad por tipo, energía 1–5, `symptomKind`, `source` y procedencia quedan protegidos. |
-| L-15 | Idempotencia del camino directo | L-14 | `idempotencyKey` obligatoria y única por propietario; enviar dos veces crea una sola fila. |
+| L-15 | Idempotencia del camino directo | L-14 | **Revisada (pieza 4), pendiente de implementar.** Cabecera `Idempotency-Key` obligatoria y tabla `idempotency_record`, con el contrato y las 8 pruebas de la pieza 4 de [`MODELO_DATOS.md`](MODELO_DATOS.md). |
 | L-16 | `AuditEvent` en la misma transacción | L-14 | Una prueba demuestra que no existe `Observation` sin su auditoría. |
 | L-17 | `ObservationRevision` y edición versionada | L-16 | Editar crea revisión, conserva la anterior y usa bloqueo optimista por versión. |
 | L-18 | Generador de datos sintéticos | L-17 | Genera entre 12 y 18 meses correlacionados sin datos personales y permite demostrar la interfaz y la restauración. |

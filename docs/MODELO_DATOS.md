@@ -14,7 +14,7 @@ Por ahora es **solo documentación**: el código sigue con la tabla `peso` provi
 | 1b | Mapeo Java: herencia `JOINED` o relación uno a uno | Pendiente: se decide al implementar, comparando ambas versiones sobre el peso |
 | 2 | Identificadores: UUID v7 | **Decidida** |
 | 3 | Sin `owner_id` en los datos; `OwnerAccount` como frontera de autorización | **Decidida**, pendiente de implementar con el login |
-| 4 | `idempotencyKey` | Pendiente |
+| 4 | Idempotencia: cabecera `Idempotency-Key` y tabla `idempotency_record` | **Decidida**, pendiente de implementar |
 | 5 | `AuditEvent` | Pendiente |
 | 6 | `ObservationRevision` (historial de ediciones) | Pendiente |
 | 7 | Valor o rango, unidad original y normalizada | Pendiente |
@@ -151,4 +151,90 @@ El threat model (documento canónico externo) sigue describiendo la protección 
 | T22. Detalle enlaza agregado de otro propietario | UNIQUE y FKs compuestas `(owner_id, id)` | No aplica: hay un solo propietario. |
 | T34. Ciphertext o DEK intercambiados entre registros | AAD con `ownerId + artifactId + objectId` | **Abierta.** Eliminar `owner_id` obliga a revisar en G3 el contexto que usa el cifrado. No se fija todavía la solución. |
 | Verificación: el segundo `OwnerAccount` falla | Prueba del singleton | Se mantiene. |
+
+## Pieza 4: idempotencia de las creaciones
+
+### Problema
+
+Una respuesta puede perderse después de que el servidor haya guardado el registro (red móvil, navegador, doble toque). El cliente reintenta y, sin protección, se crea un duplicado. Desactivar el botón no cubre la respuesta perdida, y detectar duplicados por contenido es incorrecto: dos vasos de agua seguidos son dos registros legítimos.
+
+### Decisión
+
+- Toda operación de **creación de observaciones** exige la cabecera HTTP `Idempotency-Key`.
+- **Una clave por operación**, no por pantalla: registrar un vaso y registrar otro son dos operaciones. Los reintentos de una misma operación reutilizan su clave y sus datos.
+- Unicidad de la clave en la instalación.
+- Las claves se guardan en una tabla propia, `idempotency_record`, separada de `observation`. Si vivieran en `observation`, desaparecerían al borrarla y un reintento antiguo podría recrear el registro.
+- Se implementa **una sola vez**, como componente reutilizable para todas las creaciones de observaciones.
+
+**Sustituye al diccionario**, que ponía `idempotencyKey` en `Observation` con `UNIQUE(ownerId, key)`. La clave de `Capture` se revisará al llegar a G3.
+
+Contrato basado en el borrador IETF *The Idempotency-Key HTTP Header Field* (draft-ietf-httpapi-idempotency-key-header-07), con una desviación explícita: el reintento devuelve el estado actual y no la respuesta original exacta (ver "Conservación").
+
+### Tabla (propuesta, a verificar al implementar)
+
+```sql
+CREATE TABLE idempotency_record (
+    key                 TEXT        PRIMARY KEY,
+    operation           TEXT        NOT NULL,            -- p. ej. 'crear-peso'
+    fingerprint_version SMALLINT    NOT NULL,            -- formato de la huella; el hash no permite leerlo
+    request_hash        TEXT,                            -- SHA-256 de la cadena canónica
+    observation_id      UUID REFERENCES observation (id) ON DELETE RESTRICT,
+    estado              TEXT        NOT NULL CHECK (estado IN ('en_curso', 'completada', 'borrada')),
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CHECK (
+        (estado = 'en_curso') OR
+        (estado = 'completada' AND request_hash IS NOT NULL AND observation_id IS NOT NULL) OR
+        (estado = 'borrada'    AND request_hash IS NULL     AND observation_id IS NULL)
+    )
+);
+```
+
+- `ON DELETE RESTRICT` impide borrar una observación mientras un registro de idempotencia la referencie: obliga a actualizar el registro en la misma transacción.
+- El `CHECK` impide en PostgreSQL una operación `completada` sin observación, o una `borrada` que conserve la huella.
+- `en_curso` solo existe dentro de la transacción que crea la observación; otras transacciones nunca lo ven confirmado.
+
+### Flujo de creación (una transacción)
+
+1. Reservar la clave: `INSERT … ON CONFLICT (key) DO NOTHING` con `estado = 'en_curso'`, con un límite de espera (`SET LOCAL lock_timeout`).
+2. **Solo si la reserva se insertó:** crear la observación y su detalle, y marcar la clave como `completada` con su huella y su `observation_id`.
+3. Si hubo conflicto: leer la clave con **una consulta posterior**. Con el aislamiento por defecto de PostgreSQL (`READ COMMITTED`), la fila concurrente puede no ser visible en la misma sentencia del `INSERT`.
+
+### Respuestas
+
+| Caso | Respuesta |
+|---|---|
+| Falta la cabecera | 400 |
+| Clave nueva | 201 con la observación creada |
+| Misma clave, misma operación y misma huella | 201 con el **estado actual** de la observación; no crea nada |
+| Misma clave con otra huella u otra operación | 422 |
+| Operación borrada después de completarse | 410; no recrea nada |
+| Se agota la espera por la reserva de **esa** clave (otra petición la tiene en curso) | 409, tras deshacer la transacción. Otros timeouts de PostgreSQL no se interpretan como "operación en curso". |
+| La creación falla | Se deshace todo, reserva incluida; un reintento puede completar la operación |
+
+Que `lock_timeout` corte la espera en el índice único se verificará con una prueba real antes de darlo por válido.
+
+### Huella (fingerprint)
+
+- Se calcula sobre los **campos ya validados**, no sobre el JSON recibido: el orden de los campos JSON no influye.
+- Cadena canónica escrita a mano, con campos en orden fijo, números normalizados (`72.350` y `72.35` son iguales), fechas en ISO-8601 y opcionales vacíos explícitos. Ejemplo: `v1|crear-peso|fecha=2026-09-26|kilos=72.35`.
+- La versión se guarda además en `fingerprint_version`. Mientras existan claves de una versión, se conserva su algoritmo.
+
+### Conservación
+
+- Las claves **no caducan** por ahora: un solo propietario genera un volumen trivial y así no hace falta ninguna tarea de limpieza. Se revisará si el volumen lo pidiera. El borrador pide publicar esta política; queda publicada aquí.
+- **No se guarda el cuerpo de la respuesta.** Mientras la observación existe, un reintento con la petición original devuelve su estado actual. Tras borrarla, devuelve 410.
+- **Borrado atómico:** en la misma transacción se borran la observación y su detalle, se eliminan `request_hash` y `observation_id` y la operación pasa a `borrada`.
+- Tras el borrado se conservan `key`, `operation`, `fingerprint_version`, `estado` y `created_at`: **sin contenido de la observación**, aunque revelan qué operación se hizo y cuándo.
+- La huella se elimina al borrar porque, con entradas previsibles (fechas y pesos acotados), se pueden probar combinaciones por fuerza bruta hasta encontrarla: conservarla equivaldría a conservar el dato.
+
+### Pruebas obligatorias al implementar
+
+1. Reintento seguido con la misma clave: misma respuesta, una sola fila.
+2. Misma clave con contenido distinto: 422.
+3. Sin cabecera: 400.
+4. Dos peticiones simultáneas con la misma clave: una sola fila y respuestas coherentes.
+5. Fallo durante la creación: no queda registro de idempotencia.
+6. Reintento después de borrar: 410 y no se recrea.
+7. Reintento después de editar: la petición original devuelve el estado actual; contenido distinto del original sigue dando 422.
+8. La primera petición concurrente falla: la segunda completa la operación.
 
