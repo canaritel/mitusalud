@@ -1,25 +1,34 @@
 # Modelo de datos: revisión pieza a pieza
 
-Iniciada el 26/09/2026. Revisa el modelo del diccionario de datos (v6) con los principios de [`STACK.md`](STACK.md): no sobredimensionar, sencillo antes que fácil y comprensible para un junior.
+Revisión del 26/09/2026 del modelo del diccionario de datos (v6), con los principios de [`STACK.md`](STACK.md): no sobredimensionar, sencillo antes que fácil y comprensible para un junior. Donde este documento difiere del diccionario, manda este documento. Lo que no aparece aquí sigue como dice el diccionario hasta que se revise.
 
-Cada pieza registra qué se decidió, por qué y qué alternativas se descartaron. Donde este documento difiere del diccionario, manda este documento. Lo que no aparece aquí sigue como dice el diccionario hasta que se revise.
+## Cómo leer este documento
 
-Por ahora es **solo documentación**: el código sigue con la tabla `peso` provisional (ver "Esqueleto provisional" en `STACK.md`).
+La revisión se detuvo en la pieza 8 al detectar que se estaba **sobrediseñando**: el código seguía siendo pequeño, pero crecía el compromiso de diseño para fases que aún no existen. Por eso cada decisión está en uno de estos dos grupos:
 
-## Estado
+- **Se implementa en el próximo paso:** lo necesario para el recorrido pequeño del peso.
+- **Condición futura, revisable:** el problema y sus límites están identificados y deben respetarse, pero el mecanismo descrito es una propuesta. Se revisará cuando aparezca la función que lo necesite, y solo entrará si simplifica ese código. Los requisitos del backlog asociados siguen vigentes y no se dan por cumplidos antes.
 
-| # | Pieza | Estado |
+## Se implementa en el próximo paso
+
+| # | Decisión |
+|---|---|
+| 1 | Tablas: `observation` común + una tabla de detalle por tipo, con FK compuesta `(observation_id, type)` |
+| 1b | Mapeo Java: **una sola implementación**, herencia `JOINED`, validada con un ejemplo pequeño (guardar ambas filas y que `@Version` detecte un cambio solo del detalle). Si no lo cumple, relación uno a uno |
+| 2 | Identificadores UUID v7 generados con Hibernate; cronología por `observed_at` con `id` de desempate |
+| 7 | Solo unidades canónicas (`kilos` con 2 decimales), sin redondeos silenciosos |
+| 9 | `observed_at` (fecha y hora con zona) en lugar de solo fecha: se concreta en el propio paso |
+
+## Condiciones futuras, revisables
+
+| # | Condición | Cuándo se revisa |
 |---|---|---|
-| 1 | Organización de las tablas: `observation` común + una tabla de detalle por tipo | **Decidida** |
-| 1b | Mapeo Java: herencia `JOINED` o relación uno a uno | Pendiente: se decide al implementar, comparando ambas versiones sobre el peso. Criterio añadido por la pieza 6: que `@Version` detecte ediciones que solo cambian el detalle |
-| 2 | Identificadores: UUID v7 | **Decidida** |
-| 3 | Sin `owner_id` en los datos; `OwnerAccount` como frontera de autorización | **Decidida**, pendiente de implementar con el login |
-| 4 | Idempotencia: cabecera `Idempotency-Key` y tabla `idempotency_record` | **Decidida**, pendiente de implementar |
-| 5 | `AuditEvent`: un evento por operación de negocio, sin contenido | **Decidida**, pendiente de implementar |
-| 6 | Historial de ediciones: foto del estado anterior en JSON | **Decidida**, pendiente de implementar con la edición |
-| 7 | Unidades canónicas ahora; conservar lo declarado cuando haya conversión; rangos aplazados | **Decidida** |
-| 8 | Procedencia (`source`: directo, IA, importado) | Pendiente |
-| 9 | `observedAt` (fecha y hora) en lugar de solo fecha | Pendiente |
+| 3 | Sin `owner_id` en los datos; `OwnerAccount` como frontera de autorización (`iss` + `sub`), con pruebas de acceso | Con el login |
+| 4 | Idempotencia de las creaciones (`Idempotency-Key`) | Con el primer cliente real que pueda perder una respuesta |
+| 5 | Auditoría de operaciones, sin contenido | Con la primera operación que deba auditarse (borrar, exportar…) |
+| 6 | Historial de ediciones: foto del estado anterior | Con la edición |
+| 7 | Conservar lo declarado cuando haya conversión (libras, vasos) | Con la primera unidad alternativa |
+| 8 | Procedencia (`source`) | **Antes del primer camino de creación no directo** (importación o IA, lo que llegue antes) |
 
 ## Pieza 1: `observation` común + tabla de detalle por tipo
 
@@ -112,6 +121,8 @@ Referencia: RFC 9562, sección 5.7.
 
 ## Pieza 3: sin `owner_id` en los datos; `OwnerAccount` como frontera de autorización
 
+> **Condición futura, revisable.** El problema y sus límites se mantienen; el mecanismo y las pruebas descritas son una propuesta que se revisará al implementarse (ver "Cómo leer este documento").
+
 ### Contexto
 
 El diccionario pone `owner_id NOT NULL` en todas las tablas, claves foráneas compuestas `(owner_id, id)` y un `OwnerAccount` con una sola fila. Los documentos vinculan esta protección a un segundo propietario, a la compartición o al acceso de terceros: el diccionario exige RLS "antes del segundo propietario, compartición o acceso de terceros" y el threat model (T12) habla de "gate RLS antes de abrir".
@@ -153,6 +164,8 @@ El threat model (documento canónico externo) sigue describiendo la protección 
 | Verificación: el segundo `OwnerAccount` falla | Prueba del singleton | Se mantiene. |
 
 ## Pieza 4: idempotencia de las creaciones
+
+> **Condición futura, revisable.** El problema y sus límites se mantienen; el mecanismo y las pruebas descritas son una propuesta que se revisará al implementarse (ver "Cómo leer este documento").
 
 ### Problema
 
@@ -240,6 +253,8 @@ Que `lock_timeout` corte la espera en el índice único se verificará con una p
 
 ## Pieza 5: auditoría de operaciones (`audit_event`)
 
+> **Condición futura, revisable.** El problema y sus límites se mantienen; el mecanismo y las pruebas descritas son una propuesta que se revisará al implementarse (ver "Cómo leer este documento").
+
 ### Regla
 
 > Cada operación de negocio que modifica datos deja su evento de auditoría en la misma transacción. Las exportaciones y otras acciones de seguridad tienen eventos específicos.
@@ -289,6 +304,8 @@ El threat model pide trazabilidad y borrado verificable. Un evento de borrado ac
 5. Ningún evento contiene valores de la observación.
 
 ## Pieza 6: historial de ediciones (`observation_revision`)
+
+> **Condición futura, revisable.** El problema y sus límites se mantienen; el mecanismo y las pruebas descritas son una propuesta que se revisará al implementarse (ver "Cómo leer este documento").
 
 ### Propósito
 
@@ -355,6 +372,8 @@ Mientras no existan conversiones, se conserva exactamente el valor canónico ace
 
 ### Fase con conversiones: conservar lo declarado
 
+> **Condición futura, revisable.** El problema y sus límites se mantienen; el mecanismo y las pruebas descritas son una propuesta que se revisará al implementarse (ver "Cómo leer este documento").
+
 Se aplica cuando entren unidades alternativas o atajos (libras, vasos; L-19 y L-20). Queda decidida desde ahora:
 
 > Si un valor llega en una unidad distinta de la canónica, se conserva lo declarado junto al valor normalizado.
@@ -387,4 +406,25 @@ Las columnas genéricas `originalValue`, `originalUnit`, `value`, `valueLow`, `v
 
 1. Un valor con más decimales de los admitidos se rechaza con 400, sin redondear.
 2. En la fase con conversiones: se guardan lo declarado y el normalizado calculado por el servidor, y un cambio posterior de configuración no altera registros existentes.
+
+## Pieza 8: procedencia (`source`)
+
+### Decisión
+
+No se añade la columna `source` mientras solo exista el registro directo: todas las observaciones son directas por construcción, porque no hay otro camino para crearlas. Una columna que siempre vale lo mismo es lo que la pieza 3 retiró con `owner_id`.
+
+**Regla:** la revisión de procedencia se hace **antes del primer camino de creación no directo**, sea importación o IA, lo que llegue antes. En ese momento una migración añade `source NOT NULL` y marca como `direct` las filas anteriores. Ese marcado es seguro, no una suposición, precisamente por la regla. INV-03 e INV-04 del diccionario son el punto de partida de esa revisión.
+
+Lo que se guarde del proveedor de IA pertenece a la procedencia, no a la auditoría: el actor de una confirmación es el propietario (pieza 5).
+
+### Alternativas descartadas
+
+| Opción | Motivo |
+|---|---|
+| Diccionario completo ahora | Crea columnas y FKs hacia `capture` y `proposal`, que no existen. |
+| Columna `source` limitada a `direct` | Un campo constante sin información. |
+
+## Pieza 9: momento del hecho (`observed_at`)
+
+Se concreta en el paso de código del peso, junto a la migración V2.
 
