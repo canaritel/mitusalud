@@ -15,7 +15,7 @@ Por ahora es **solo documentación**: el código sigue con la tabla `peso` provi
 | 2 | Identificadores: UUID v7 | **Decidida** |
 | 3 | Sin `owner_id` en los datos; `OwnerAccount` como frontera de autorización | **Decidida**, pendiente de implementar con el login |
 | 4 | Idempotencia: cabecera `Idempotency-Key` y tabla `idempotency_record` | **Decidida**, pendiente de implementar |
-| 5 | `AuditEvent` | Pendiente |
+| 5 | `AuditEvent`: un evento por operación de negocio, sin contenido | **Decidida**, pendiente de implementar |
 | 6 | `ObservationRevision` (historial de ediciones) | Pendiente |
 | 7 | Valor o rango, unidad original y normalizada | Pendiente |
 | 8 | Procedencia (`source`: directo, IA, importado) | Pendiente |
@@ -237,4 +237,54 @@ Que `lock_timeout` corte la espera en el índice único se verificará con una p
 6. Reintento después de borrar: 410 y no se recrea.
 7. Reintento después de editar: la petición original devuelve el estado actual; contenido distinto del original sigue dando 422.
 8. La primera petición concurrente falla: la segunda completa la operación.
+
+## Pieza 5: auditoría de operaciones (`audit_event`)
+
+### Regla
+
+> Cada operación de negocio que modifica datos deja su evento de auditoría en la misma transacción. Las exportaciones y otras acciones de seguridad tienen eventos específicos.
+
+Las escrituras técnicas internas (por ejemplo, reservar una clave de idempotencia) no son operaciones de negocio y no se auditan por separado.
+
+### Por qué una tabla propia
+
+Se solapa en parte con otras tablas, pero cada una tiene un propósito distinto y no se sustituyen:
+
+| Tabla | Propósito |
+|---|---|
+| `idempotency_record` | Evitar duplicados en los reintentos |
+| `observation_revision` | Conservar el contenido anterior de cada edición (pieza 6) |
+| `audit_event` | Seguridad y trazabilidad: qué operación se hizo, sobre qué, cuándo y por quién, incluidas exportaciones, borrados y cambios de la cuenta propietaria |
+
+Usar `idempotency_record` como auditoría las acoplaría: un cambio en la política de claves eliminaría la auditoría sin que se notara.
+
+### Decisión
+
+- Tabla con `id`, `created_at`, `action`, `aggregate_type`, `aggregate_id` y `actor`. Sin `owner_id` (pieza 3).
+- **Sin campo `metadata` libre.** Si una acción necesita más información, se añaden columnas concretas.
+- **Sin contenido**: ni valores de la observación, ni valores anteriores, textos, prompts, respuestas del proveedor ni credenciales.
+- Se escribe con una **llamada explícita desde el service**, en la misma transacción que la operación. Sin Hibernate Envers, sin AOP y sin eventos intermedios.
+- Sin caducidad por ahora: volumen trivial.
+
+**Sustituye al diccionario**, que tenía `ownerId` y `metadata jsonb`, y cuya regla (INV-05, L-16) solo cubría la creación de observaciones.
+
+### Reglas
+
+1. **Una creación, un evento.** El evento se escribe solo en el camino que realmente crea, tras reservar la clave de idempotencia. Un reintento no escribe otro. Si falla la auditoría, no se confirma la creación; si falla la creación, no queda evento.
+2. **Exportar no modifica datos**, pero se audita expresamente. Solo se registra lo que el servidor puede comprobar (por ejemplo, "exportación generada"). Que el navegador haya recibido el archivo no se puede afirmar desde una transacción.
+3. **El actor lo determina el servidor** a partir de la sesión, nunca un campo enviado por el cliente. Si la IA propone y el propietario confirma, el actor de la confirmación es el **propietario**; el proveedor forma parte de la procedencia de la propuesta (pieza 8).
+4. **La auditoría sobrevive al borrado.** `aggregate_id` es un UUID sin clave foránea: no se borra en cascada ni impide eliminar la observación. Tras un borrado conserva qué operación se hizo, sobre qué identificador y cuándo, sin contenido; el UUID v7 revela además cuándo se generó.
+5. **La aplicación solo inserta y lee** en `audit_event`, y los tests lo comprueban. Es una regla de la aplicación, **no una garantía de inmutabilidad** frente a quien tenga acceso a la base de datos.
+
+### Alcance del "borrado verificable"
+
+El threat model pide trazabilidad y borrado verificable. Un evento de borrado acredita que **la aplicación registró esa operación**; por sí solo no demuestra que hayan desaparecido todas las copias (por ejemplo, las copias de seguridad hasta que caduquen).
+
+### Pruebas obligatorias al implementar
+
+1. Crear una observación deja exactamente un evento; un reintento con la misma clave no añade otro.
+2. Si falla la escritura del evento, no queda la observación; si falla la creación, no queda evento.
+3. Borrar una observación deja su evento de borrado y los eventos anteriores siguen existiendo.
+4. El actor sale de la sesión del servidor, no de la petición.
+5. Ningún evento contiene valores de la observación.
 
