@@ -427,6 +427,37 @@ V3__...sql                        <span class="c">← el siguiente cambio</span>
       <p>Al arrancar, Flyway mira la tabla <code>flyway_schema_history</code> (la crea él) para saber qué scripts ya aplicó, y ejecuta solo los nuevos, en orden. Así cualquier instalación, hoy o dentro de un año, acaba con las mismas tablas.</p>
       <div class="warn"><strong>Regla de oro</strong>Nunca se modifica un script ya aplicado: Flyway guarda su huella y se negaría a arrancar. Cualquier cambio va en un script nuevo. Por eso V1 sigue existiendo aunque su tabla ya no: V2 la borra y crea las nuevas. Los datos de V1 eran inventados y se descartaron en vez de migrarse.</div>
 
+      <h3>Conceptos básicos de las tablas</h3>
+      <p>Una tabla no solo guarda datos: también declara <strong>reglas</strong> (restricciones, en inglés <em>constraints</em>) que PostgreSQL hace cumplir siempre, venga el dato de donde venga. Si una fila incumple una regla, PostgreSQL la rechaza y no guarda nada. Estas son las que usa mitusalud:</p>
+      <div class="table-wrap"><table>
+        <tr><th>Concepto</th><th>Qué es</th><th>Ejemplo en mitusalud</th></tr>
+        <tr><td><code>PRIMARY KEY</code><br>(clave primaria)</td><td>La columna que identifica cada fila. Es única y nunca puede estar vacía.</td><td><code>observation.id</code></td></tr>
+        <tr><td><code>NOT NULL</code></td><td>La columna es obligatoria: no admite "vacío" (<code>NULL</code>).</td><td><code>observed_at</code>: todo registro tiene un momento</td></tr>
+        <tr><td><code>DEFAULT</code></td><td>Valor que PostgreSQL pone si el <code>INSERT</code> no envía esa columna.</td><td><code>peso.type</code> vale <code>'weight'</code></td></tr>
+        <tr><td><code>CHECK</code></td><td>Una condición que cada fila debe cumplir.</td><td><code>kilos &gt; 0 AND kilos &lt; 500</code></td></tr>
+        <tr><td><code>UNIQUE</code></td><td>No puede haber dos filas con el mismo valor, o con la misma combinación si son varias columnas.</td><td><code>UNIQUE (id, type)</code> en <code>observation</code></td></tr>
+        <tr><td><code>FOREIGN KEY</code><br>(clave foránea)</td><td>"Este valor tiene que existir en otra tabla". Enlaza tablas y evita referencias a filas que no existen.</td><td><code>peso.observation_id</code> debe ser el <code>id</code> de una observación</td></tr>
+        <tr><td>Clave foránea compuesta</td><td>Lo mismo, pero con varias columnas a la vez: la <em>combinación</em> tiene que existir en la otra tabla. La otra tabla necesita un <code>UNIQUE</code> (o clave primaria) sobre esas columnas.</td><td><code>(observation_id, type)</code> → <code>(id, type)</code>: un peso solo puede colgar de una observación de tipo <code>weight</code></td></tr>
+        <tr><td><code>ON DELETE CASCADE</code></td><td>Qué pasa al borrar la fila referenciada: con <code>CASCADE</code>, se borran también las que la apuntan.</td><td>Borrar una observación borra su fila de <code>peso</code></td></tr>
+        <tr><td>Índice</td><td>Estructura que acelera las búsquedas, como el índice de un libro. <code>PRIMARY KEY</code> y <code>UNIQUE</code> crean uno automáticamente.</td><td>Buscar un peso por su id no recorre toda la tabla</td></tr>
+      </table></div>
+      <p>Así responde PostgreSQL cuando se rompe cada regla (mensajes reales de PostgreSQL 17 con estas tablas). Aprender a leerlos ahorra mucho tiempo: siempre dicen <em>qué tabla</em> y <em>qué restricción</em>.</p>
+<pre><span class="c">-- NOT NULL: falta el momento</span>
+ERROR: null value in column "observed_at" of relation "observation" violates not-null constraint
+
+<span class="c">-- PRIMARY KEY: dos observaciones con el mismo id</span>
+ERROR: duplicate key value violates unique constraint "observation_pkey"
+
+<span class="c">-- CHECK: un tipo que no está en la lista</span>
+ERROR: new row for relation "observation" violates check constraint "observation_type_check"
+
+<span class="c">-- CHECK: 600 kg</span>
+ERROR: new row for relation "peso" violates check constraint "peso_kilos_check"
+
+<span class="c">-- FOREIGN KEY: un peso que apunta a una observación que no existe (o de otro tipo)</span>
+ERROR: insert or update on table "peso" violates foreign key constraint "peso_observation_id_type_fkey"</pre>
+      <p>Los nombres como <code>peso_kilos_check</code> los inventa PostgreSQL: tabla + columna + tipo de regla. Por eso un test puede comprobar que un fallo viene de una regla concreta (<a href="#tests">sección 8</a>).</p>
+
       <h3>Las tablas <code>observation</code> y <code>peso</code></h3>
       <p>Cada registro del diario tiene dos partes: lo común a cualquier tipo (cuándo ocurrió, qué tipo es) en <code>observation</code>, y lo propio de su tipo en una tabla de detalle. Hoy solo existe el peso; el agua o la energía tendrán su propia tabla de detalle.</p>
 <pre>CREATE TABLE observation (
@@ -593,6 +624,21 @@ docker exec -it mitusalud-postgres psql -U mitusalud -c "ALTER USER mitusalud PA
       <h2>9. Integración continua (GitHub Actions)</h2>
       <p>En cada push a <code>main</code> y en cada pull request, GitHub compila el backend y ejecuta <strong>todos</strong> los tests en una máquina limpia, incluidos los de base de datos. Si algo falla, el commit aparece con una ✗ roja y GitHub avisa por email. El resultado se ve en el badge del README.</p>
 
+      <h3>Qué es CI (y qué no)</h3>
+      <p><strong>CI</strong> (<em>Continuous Integration</em>, integración continua) es una práctica: integrar los cambios en la rama principal a menudo y <strong>verificar cada uno automáticamente</strong> (compilar y pasar los tests). Así un error se detecta en minutos, cuando aún recuerdas qué cambiaste, y no semanas después.</p>
+      <p>No hay que confundirlo con <strong>CD</strong> (<em>Continuous Delivery / Deployment</em>): preparar o desplegar automáticamente cada versión que pasa la CI. mitusalud tiene CI, <strong>no</strong> CD: nada se despliega solo.</p>
+      <p><strong>GitHub Actions</strong> es la herramienta de GitHub que ejecuta esa verificación. Su vocabulario, aplicado a nuestro <code>ci.yml</code>:</p>
+      <div class="table-wrap"><table>
+        <tr><th>Término</th><th>Qué es</th><th>En mitusalud</th></tr>
+        <tr><td><em>Workflow</em></td><td>Un proceso automático, definido en un archivo YAML dentro de <code>.github/workflows/</code>.</td><td><code>ci.yml</code> (nombre: CI)</td></tr>
+        <tr><td><em>Trigger</em> (<code>on:</code>)</td><td>Qué lo dispara.</td><td>Push a <code>main</code> y pull requests</td></tr>
+        <tr><td><em>Job</em></td><td>Un bloque de trabajo que corre en una máquina.</td><td><code>backend</code></td></tr>
+        <tr><td><em>Runner</em></td><td>La máquina (virtual, limpia) que GitHub presta para ejecutar el job.</td><td><code>ubuntu-latest</code></td></tr>
+        <tr><td><em>Step</em></td><td>Cada paso del job, en orden.</td><td>Descargar código, instalar Java, ejecutar tests</td></tr>
+        <tr><td><em>Action</em></td><td>Un paso reutilizable publicado por otros.</td><td><code>actions/checkout</code>, <code>actions/setup-java</code></td></tr>
+        <tr><td><em>Service container</em></td><td>Un contenedor auxiliar que vive mientras dura el job.</td><td>El PostgreSQL desechable</td></tr>
+      </table></div>
+
       <h3>Qué se gana</h3>
       <ul>
         <li><strong>No depende de acordarse:</strong> los tests se ejecutan solos.</li>
@@ -628,6 +674,21 @@ steps:
       <div class="note"><strong>¿Por qué no Testcontainers?</strong>Testcontainers arranca PostgreSQL desde el código de los tests y añade una dependencia al proyecto. GitHub Actions ya ofrece los <em>service containers</em> con unas líneas de configuración, así que en CI no hace falta. Testcontainers sigue como propuesta por si algún día hay Docker en el equipo de desarrollo.</div>
       <div class="note"><strong>Idioma de la máquina</strong>Los servidores de GitHub están en inglés y tu PC quizá en español. Los tests esperan mensajes en español y pasan igual, porque el idioma lo decide la petición (<code>ConfiguracionIdioma</code>), no la máquina. Se comprobó antes de subir el workflow ejecutando los tests con la JVM en inglés.</div>
       <p><code>-B</code> (<em>batch mode</em>) le dice a Maven que no hay nadie delante: sin colores ni barras de progreso, así los logs de GitHub son legibles.</p>
+
+      <h3>Usar GitHub Actions en el día a día</h3>
+      <ol class="steps">
+        <li><strong>Haz push como siempre.</strong> No hay que lanzar nada: el workflow arranca solo en uno o dos segundos.</li>
+        <li><strong>Mira el resultado.</strong> En GitHub, junto a cada commit aparece un punto amarillo (en marcha), un ✓ verde o una ✗ roja. También en la pestaña <em>Actions</em> del repo y en el badge del README. Si falla, GitHub te avisa por email.</li>
+        <li><strong>Si falla, lee el log.</strong> <em>Actions</em> → la ejecución con la ✗ → el job → el paso marcado en rojo. Busca <code>FAIL</code>, <code>ERROR</code> o <code>Tests run:</code>: el log de Maven dice qué test falló y por qué.</li>
+        <li><strong>Reprodúcelo en tu PC.</strong> El workflow ejecuta exactamente <code>./mvnw -B verify -Pbd</code>: con el túnel abierto, ese mismo comando reproduce el fallo en local, donde es más fácil depurarlo.</li>
+        <li><strong>Relanzar.</strong> El botón <em>Re-run jobs</em> repite la ejecución sin hacer push. Úsalo solo si el fallo fue algo pasajero (por ejemplo, la red); si un test falla de verdad, relanzar no lo arregla.</li>
+      </ol>
+      <p>Lo mismo desde la terminal, con la herramienta <code>gh</code> de GitHub:</p>
+<pre>gh run list                      <span class="c"># últimas ejecuciones y su resultado</span>
+gh run watch                     <span class="c"># sigue en directo la ejecución en marcha</span>
+gh run view --log-failed         <span class="c"># muestra solo el log de los pasos que fallaron</span>
+gh run rerun &lt;id&gt;                <span class="c"># relanza una ejecución</span></pre>
+      <p>En un <strong>pull request</strong>, el resultado aparece como un <em>check</em> antes de aceptar los cambios: así se sabe si una contribución rompe algo sin tener que probarla a mano.</p>
     </section>
 
     <!-- 10 -->
@@ -730,6 +791,13 @@ cd backend
         <dt>LTS</dt><dd><em>Long Term Support</em>: versión con soporte y parches durante años. Java 21 lo es.</dd>
         <dt>OpenAPI / Swagger UI</dt><dd>OpenAPI es el estándar para describir una API; Swagger UI es la página web que lee esa descripción y deja probar la API.</dd>
         <dt>Healthcheck</dt><dd>Comprobación automática de si un servicio funciona (<code>/actuator/health</code>, el <code>healthcheck</code> de Docker).</dd>
+        <dt>Clave primaria (<code>PRIMARY KEY</code>)</dt><dd>Columna (o columnas) que identifica cada fila de una tabla: única y obligatoria.</dd>
+        <dt>Clave foránea (<code>FOREIGN KEY</code>)</dt><dd>Columna cuyo valor debe existir en otra tabla. Enlaza tablas y evita referencias rotas.</dd>
+        <dt>Restricción (<em>constraint</em>)</dt><dd>Regla declarada en una tabla que PostgreSQL hace cumplir siempre: <code>NOT NULL</code>, <code>CHECK</code>, <code>UNIQUE</code>, claves primarias y foráneas.</dd>
+        <dt>Índice</dt><dd>Estructura que acelera las búsquedas en una tabla. Las claves primarias y los <code>UNIQUE</code> crean uno automáticamente.</dd>
+        <dt>CI (integración continua)</dt><dd>Verificar automáticamente cada cambio (compilar y pasar tests) al integrarlo en la rama principal.</dd>
+        <dt>CD (entrega o despliegue continuo)</dt><dd>Preparar o desplegar automáticamente cada versión que pasa la CI. mitusalud no lo tiene.</dd>
+        <dt>Workflow, job, step, runner</dt><dd>En GitHub Actions: el proceso automático (archivo YAML), sus bloques de trabajo, los pasos de cada bloque y la máquina que los ejecuta.</dd>
       </dl>
     </section>
 
