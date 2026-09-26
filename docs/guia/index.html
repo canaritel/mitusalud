@@ -172,7 +172,7 @@
       <button class="theme-toggle" type="button" id="tema" aria-label="Cambiar tema claro u oscuro">Tema</button>
       <h1>Guía de mitusalud</h1>
       <p>Qué hace cada pieza del proyecto y, sobre todo, por qué está así. Pensada para alguien que empieza.</p>
-      <div class="meta">Actualizada el 26/09/2026 · Estado: backend con registro de peso</div>
+      <div class="meta">Actualizada el 26/09/2026 · Estado: backend con registro de peso y tests</div>
     </header>
 
     <!-- 1 -->
@@ -262,6 +262,7 @@
 ├── src/main/java/          <span class="c">código de la aplicación</span>
 ├── src/main/resources/     <span class="c">configuración, SQL y textos</span>
 ├── src/test/java/          <span class="c">tests</span>
+├── src/test/resources/     <span class="c">configuración solo para tests</span>
 └── target/                 <span class="c">lo que genera Maven al compilar (no se sube)</span></pre>
 
       <h3>Maven: qué es</h3>
@@ -299,9 +300,11 @@
         <tr><td><code>springdoc-openapi-starter-webmvc-ui</code></td><td>Genera la documentación OpenAPI leyendo los controllers y sirve Swagger UI para probar la API desde el navegador.</td></tr>
         <tr><td><code>spring-boot-devtools</code> <small>(runtime, optional)</small></td><td>Reinicia la app al recompilar. Solo para desarrollo: no entra en el <code>.jar</code> final.</td></tr>
         <tr><td><code>spring-boot-starter-webmvc-test</code> <small>(test)</small></td><td>JUnit 5, AssertJ y utilidades de test de Spring. Solo existe al ejecutar tests.</td></tr>
+        <tr><td><code>spring-boot-starter-data-jpa-test</code> <small>(test)</small></td><td><code>@DataJpaTest</code>: tests de repositories con JPA y Flyway (<a href="#tests">sección 8</a>). Se quitó al principio porque no se usaba y volvió al llegar los tests de base de datos.</td></tr>
         <tr><td><code>spring-modulith-starter-test</code> <small>(test)</small></td><td>Comprueba las fronteras entre módulos (<a href="#tests">sección 8</a>).</td></tr>
       </table></div>
       <p>Al final del <code>pom.xml</code>, <code>spring-modulith-bom</code> fija la versión de Spring Modulith (como hace el padre con Spring) y <code>spring-boot-maven-plugin</code> añade el comando <code>spring-boot:run</code> y empaqueta la app en un único <code>.jar</code> ejecutable.</p>
+      <p>Justo antes de <code>&lt;build&gt;</code> está el bloque <code>&lt;profiles&gt;</code>. Un <strong>perfil de Maven</strong> es configuración que solo se activa si la pides con <code>-P</code>. El perfil <code>bd</code> activa el plugin <em>failsafe</em>, que ejecuta los tests de base de datos (<code>*IT</code>). Sin <code>-Pbd</code> esos tests no se ejecutan y el build no necesita el túnel.</p>
       <div class="warn"><strong>Lo que quitamos a propósito</strong>El generador oficial (Spring Initializr) añadió seis piezas extra de Spring Modulith: observabilidad, integración con Actuator y un registro de eventos en base de datos. No las necesitamos, así que se quitaron. Revisar lo que genera una herramienta es parte del trabajo.</div>
 
       <h3><code>src/main</code>, <code>src/test</code> y <code>resources</code></h3>
@@ -311,6 +314,7 @@
         <tr><td><code>src/main/java</code></td><td>El código Java de la aplicación.</td></tr>
         <tr><td><code>src/main/resources</code></td><td>Todo lo que no es Java pero va dentro de la app: <code>application.properties</code>, los scripts SQL de Flyway en <code>db/migration/</code> y los textos traducidos <code>messages*.properties</code>.</td></tr>
         <tr><td><code>src/test/java</code></td><td>Los tests. No entran en el <code>.jar</code> final.</td></tr>
+        <tr><td><code>src/test/resources</code></td><td>Configuración que solo usan los tests, como <code>application-test.properties</code>, que apunta a la base de datos de test.</td></tr>
       </table></div>
 
       <h3>El paquete <code>io.github.canaritel.mitusalud</code></h3>
