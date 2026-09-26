@@ -28,6 +28,13 @@ Propuesta viva, iniciada el 26/09/2026. Donde este documento difiere de la docum
 | Hexagonal completa en `ingesta` | Aprobada | Ahí hay dependencias intercambiables reales: proveedor de IA y almacenamiento. |
 | Hexagonal ligera en el resto | Aprobada | Reglas en service y dominio, nunca en el controller; el controller no expone entidades JPA. Pasar a hexagonal completa queda como refactor local. |
 | Spring Data JPA | Aprobada | Acceso a PostgreSQL; es lo habitual en empresa. |
+| Bean Validation | Aprobada | Reglas declaradas con anotaciones en los records (`@NotNull`, `@Positive`). |
+| ProblemDetail (RFC 9457) | Aprobada | Formato de error estándar en toda la API; viene con Spring. |
+| Spring Boot DevTools | Aprobada | Reinicio automático al guardar, solo en desarrollo. |
+| Actuator (solo `health`) | Aprobada | Estado de la aplicación y la base de datos para healthchecks. |
+| Virtual threads | Aprobada | Concurrencia de Java 21 activada con una propiedad, sin cambiar el código. |
+| Spring Security, RestClient, Spring AI, test slices | Propuesta | Se deciden al llegar a login, integraciones externas, G5 y pruebas. |
+| WebFlux, Spring Cloud, Spring Batch, GraalVM native | Descartadas | Complejidad sin necesidad: los virtual threads cubren la concurrencia y no hay microservicios ni procesos por lotes. |
 | ArchUnit | Propuesta | Reglas de arquitectura adicionales si Spring Modulith no basta. |
 
 ## Datos
