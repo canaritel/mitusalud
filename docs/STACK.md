@@ -22,9 +22,12 @@ Propuesta viva, iniciada el 26/09/2026. Donde este documento difiere de la docum
 | Spring Boot 4 | Aprobada | Web, datos y seguridad integrados; estándar en Java. |
 | Maven | Aprobada | Gestión de dependencias y build habitual en proyectos Java. |
 | springdoc-openapi | Aprobada | Genera el contrato OpenAPI y Swagger UI a partir de los controllers, sin mantener un YAML a mano. |
-| Módulos por funcionalidad con capas simples (controller, service, repository) | Propuesta | Orden suficiente sin la ceremonia de la arquitectura hexagonal completa. |
-| Spring Modulith | Propuesta | Verifica las fronteras entre módulos cuando haya más de uno con contenido. |
-| Arquitectura hexagonal + ArchUnit | Propuesta | Solo si el dominio crece lo bastante para justificar puertos y adaptadores. |
+| Monolito modular (`diario`, `ingesta`, `analitica`) | Aprobada | Cada módulo expone solo su parte pública, es dueño de sus tablas y se comunica con los demás por su API pública o por eventos. Es lo que permite extraer un módulo a un servicio en el futuro. |
+| Spring Modulith | Aprobada | Un test verifica esas fronteras en cada build. |
+| Hexagonal completa en `ingesta` | Aprobada | Ahí hay dependencias intercambiables reales: proveedor de IA y almacenamiento. |
+| Hexagonal ligera en el resto | Aprobada | Reglas en service y dominio, nunca en el controller; el controller no expone entidades JPA. Pasar a hexagonal completa queda como refactor local. |
+| Spring Data JPA | Aprobada | Acceso a PostgreSQL; es lo habitual en empresa. |
+| ArchUnit | Propuesta | Reglas de arquitectura adicionales si Spring Modulith no basta. |
 
 ## Datos
 
@@ -87,5 +90,6 @@ Añadir un broker obliga a cada persona que despliegue su instancia a operarlo, 
 ## Diferencias con la documentación de análisis
 
 - Frontend en React en lugar de Angular.
-- Arquitectura hexagonal, Keycloak y el resto de piezas del documento técnico pasan a ser propuestas que se deciden al llegar a cada tarea.
+- Arquitectura hexagonal completa solo en `ingesta`.
+- Keycloak y el resto de piezas del documento técnico pasan a ser propuestas que se deciden al llegar a cada tarea.
 - Proyecto publicado con licencia AGPL-3.0 y desplegable por terceros, con un propietario por instancia.
