@@ -173,7 +173,7 @@
       <button class="theme-toggle" type="button" id="tema" aria-label="Cambiar tema claro u oscuro">Tema</button>
       <h1>Guía de mitusalud</h1>
       <p>Qué hace cada pieza del proyecto y, sobre todo, por qué está así. Pensada para alguien que empieza.</p>
-      <div class="meta">Actualizada el 26/09/2026 · Estado: peso con el modelo definitivo (observation + detalle), tests e integración continua</div>
+      <div class="meta">Actualizada el 26/09/2026 · Estado: peso y agua con el modelo definitivo (observation + detalle), tests e integración continua</div>
     </header>
 
     <!-- 1 -->
@@ -328,11 +328,12 @@
 │   ├── ConfiguracionIdioma.java
 │   └── ManejadorErroresApi.java
 └── diario/                     <span class="c">módulo: el diario</span>
-    ├── controller/PesoController.java  <span class="c">HTTP ↔ Java</span>
-    ├── service/PesoService.java        <span class="c">reglas y transacciones</span>
-    ├── repository/PesoRepository.java  <span class="c">acceso a la tabla</span>
-    ├── entity/Observacion.java, Peso.java  <span class="c">las filas de las tablas</span>
-    └── dto/PesoEntrada.java, PesoSalida.java  <span class="c">lo que entra y sale por la API</span></pre>
+    ├── controller/PesoController.java, AguaController.java  <span class="c">HTTP ↔ Java</span>
+    ├── service/PesoService.java, AguaService.java           <span class="c">reglas y transacciones</span>
+    ├── repository/PesoRepository.java, AguaRepository.java  <span class="c">acceso a las tablas</span>
+    ├── entity/Observacion.java, Peso.java, Agua.java        <span class="c">las filas de las tablas</span>
+    └── dto/PesoEntrada, PesoSalida, AguaEntrada, AguaSalida  <span class="c">lo que entra y sale por la API</span></pre>
+      <p>Cada tipo de registro tiene sus propias clases en cada capa. A propósito no hay un controller ni un service "genérico" para todos los tipos: con dos tipos, la repetición es pequeña y cada clase se lee sola. Se valorará generalizar si la repetición llega a estorbar.</p>
       <p><code>MitusaludApplication</code> lleva <code>@SpringBootApplication</code>, que hace dos cosas: busca clases de Spring (<code>@RestController</code>, <code>@Service</code>…) en su paquete y en todos los que cuelgan de él, y configura automáticamente lo que encuentre en el <code>pom.xml</code> (base de datos, web…). Por eso todo el código vive por debajo de ese paquete.</p>
       <p><strong>Módulos (monolito modular).</strong> Es una sola aplicación, pero cada paquete directo (<code>diario</code>, <code>comun</code>, y en el futuro <code>ingesta</code> y <code>analitica</code>) es un módulo con fronteras: no usa las clases internas de otro módulo y es dueño de sus tablas. Si algún día un módulo necesita ser un servicio aparte, se puede extraer sin desenredar nada. Un test lo vigila (<a href="#tests">sección 8</a>).</p>
       <p><strong>Capas dentro de cada módulo.</strong> Cada tipo de clase va en su carpeta y cada capa tiene un solo trabajo:</p>
@@ -379,6 +380,10 @@ public record PesoSalida(UUID id, Instant observadoEn, BigDecimal kilos) {
     public static PesoSalida de(Peso peso) { ... }  <span class="c">// conversión a mano</span>
 }</pre>
 
+      <h3>El agua sigue el mismo recorrido</h3>
+      <p><code>POST /api/v1/agua</code> con <code>{"observadoEn": "2026-09-26T10:00:00+02:00", "mililitros": 250}</code> pasa por las mismas capas con sus propias clases (<code>AguaController</code>, <code>AguaService</code>…). La ruta va en singular porque el agua no se cuenta en unidades. Los mililitros son enteros entre 1 y 5000 por registro.</p>
+      <div class="warn"><strong>Una trampa de Jackson</strong>Por defecto, Jackson convierte un decimal en un entero <em>truncándolo sin avisar</em>: <code>"mililitros": 250.5</code> se guardaría como 250. Lo descubrió un test al añadir el agua. Se desactiva en <code>application.properties</code> con <code>spring.jackson.deserialization.accept-float-as-int=false</code>, y ahora <code>250.5</code> responde 400.</div>
+
       <h3>La lista: <code>GET /api/v1/pesos</code></h3>
       <p>El controller llama a <code>pesoService.listar()</code>, que abre una transacción de solo lectura y llama a <code>findAllByOrderByObservadoEnDescIdDesc()</code>. Ese método no tiene código: Spring Data lee su nombre y genera la consulta, y Hibernate une las tablas <code>peso</code> y <code>observation</code> y ordena por <code>observed_at DESC, id DESC</code>. El <code>id</code> solo desempata registros del mismo instante, siempre en el mismo orden. Cada entidad se convierte en <code>PesoSalida</code> y se devuelve la lista.</p>
 
@@ -423,7 +428,8 @@ public record PesoSalida(UUID id, Instant observadoEn, BigDecimal kilos) {
       <p>Las tablas no se crean a mano ni las crea Hibernate. Se escriben scripts SQL numerados en <code>src/main/resources/db/migration/</code>:</p>
 <pre>V1__crear_tabla_peso.sql          <span class="c">← el esqueleto inicial</span>
 V2__peso_como_observacion.sql     <span class="c">← el modelo definitivo del peso</span>
-V3__...sql                        <span class="c">← el siguiente cambio</span></pre>
+V3__agua.sql                      <span class="c">← segundo tipo de registro</span>
+V4__...sql                        <span class="c">← el siguiente cambio</span></pre>
       <p>Al arrancar, Flyway mira la tabla <code>flyway_schema_history</code> (la crea él) para saber qué scripts ya aplicó, y ejecuta solo los nuevos, en orden. Así cualquier instalación, hoy o dentro de un año, acaba con las mismas tablas.</p>
       <div class="warn"><strong>Regla de oro</strong>Nunca se modifica un script ya aplicado: Flyway guarda su huella y se negaría a arrancar. Cualquier cambio va en un script nuevo. Por eso V1 sigue existiendo aunque su tabla ya no: V2 la borra y crea las nuevas. Los datos de V1 eran inventados y se descartaron en vez de migrarse.</div>
 
@@ -487,6 +493,20 @@ CREATE TABLE peso (
       </table></div>
       <div class="warn"><strong>Lo que PostgreSQL no puede impedir</strong>Que exista una fila en <code>observation</code> sin su detalle. Eso lo garantiza la aplicación guardando las dos filas en la misma transacción, y lo comprueba un test (<code>PesoTransaccionIT</code>, <a href="#tests">sección 8</a>).</div>
 
+      <h3>Segundo tipo: la tabla <code>agua</code> (V3)</h3>
+      <p>Añadir un tipo de registro son dos cosas: permitir el tipo nuevo en <code>observation</code> y crear su tabla de detalle con el mismo patrón.</p>
+<pre><span class="c">-- Un CHECK no se puede editar: se borra y se vuelve a crear con la lista ampliada.</span>
+ALTER TABLE observation DROP CONSTRAINT observation_type_check;
+ALTER TABLE observation ADD CONSTRAINT observation_type_check CHECK (type IN ('weight', 'water'));
+
+CREATE TABLE agua (
+    observation_id UUID    PRIMARY KEY,
+    type           TEXT    NOT NULL DEFAULT 'water' CHECK (type = 'water'),
+    mililitros     INTEGER NOT NULL CHECK (mililitros &gt; 0 AND mililitros &lt;= 5000),
+    FOREIGN KEY (observation_id, type) REFERENCES observation (id, type) ON DELETE CASCADE
+);</pre>
+      <p>Ese <code>ALTER</code> va en V3, no en V2: V2 ya estaba aplicada y una migración aplicada nunca se modifica. El nombre <code>observation_type_check</code> lo puso PostgreSQL al crear la tabla en V2 (tabla + columna + tipo de regla). Los 5000 ml son por registro, no por día.</p>
+
       <h3>Herencia <code>JOINED</code>: dos tablas, una clase Java</h3>
       <p>En Java, un <code>Peso</code> <em>es una</em> <code>Observacion</code>: <code>Peso extends Observacion</code>. JPA traduce esa herencia a tablas con la estrategia <code>JOINED</code>: la clase padre tiene su tabla y cada subclase la suya, unidas por la clave.</p>
 <pre>@Entity @Table(name = "observation")
@@ -497,7 +517,10 @@ public abstract class Observacion { UUID id; Instant observadoEn; Instant creado
 @Entity @Table(name = "peso")
 @DiscriminatorValue("weight")                     <span class="c">// el valor de type para los pesos</span>
 @PrimaryKeyJoinColumn(name = "observation_id")    <span class="c">// la clave de peso es la de su observación</span>
-public class Peso extends Observacion { BigDecimal kilos; }</pre>
+public class Peso extends Observacion { BigDecimal kilos; }
+
+@Entity @Table(name = "agua") @DiscriminatorValue("water") @PrimaryKeyJoinColumn(name = "observation_id")
+public class Agua extends Observacion { Integer mililitros; }</pre>
       <p>Esto es lo que Hibernate envía a PostgreSQL al guardar un peso (sacado del log real):</p>
 <pre>insert into observation (created_at, observed_at, type, id) values (?, ?, 'weight', ?)
 insert into peso (kilos, observation_id) values (?, ?)</pre>
@@ -600,6 +623,18 @@ docker exec -it mitusalud-postgres psql -U mitusalud -c "ALTER USER mitusalud PA
         <tr><td>Orden de la lista</td><td>Del momento más reciente al más antiguo.</td></tr>
         <tr><td>Mismo instante</td><td>Dos registros del mismo instante salen con el id mayor primero. Para calcular el orden esperado se compara el texto de los UUID, que ordena igual que PostgreSQL; <code>UUID.compareTo</code> no lo garantiza.</td></tr>
         <tr><td>Peso absurdo</td><td>Aunque alguien se salte la validación Java, el <code>CHECK</code> de PostgreSQL lo rechaza. En el log aparece un aviso <code>violates check constraint</code>: es lo esperado.</td></tr>
+      </table></div>
+      <h3>Tests del agua y separación entre tipos: <code>AguaControllerTest</code>, <code>AguaRepositoryIT</code>, <code>AguaApiIT</code></h3>
+      <p>Con dos tipos compartiendo la tabla <code>observation</code>, lo importante es que <strong>no se mezclen</strong>:</p>
+      <div class="table-wrap"><table>
+        <tr><th>Test</th><th>Qué garantiza</th></tr>
+        <tr><td>Controller: válido, 0, más de 5000, sin momento, <code>250.5</code></td><td>Validación del agua; un decimal se rechaza en vez de truncarse.</td></tr>
+        <tr><td>Una fila en cada tabla</td><td>Guardar agua crea su fila en <code>observation</code> y en <code>agua</code>, ambas con <code>type = 'water'</code>.</td></tr>
+        <tr><td>Cada lista solo trae su tipo</td><td>Con un peso y un agua guardados, la lista de pesos solo trae el peso y la de agua solo el agua.</td></tr>
+        <tr><td>Agua colgada de una observación de peso</td><td>Con SQL directo, saltándose Hibernate: PostgreSQL lo rechaza por la clave foránea compuesta (SQLState <code>23503</code>, <code>agua_observation_id_type_fkey</code>).</td></tr>
+        <tr><td>Tipo desconocido</td><td><code>observation</code> sigue rechazando un tipo que no está en la lista: V3 amplió el <code>CHECK</code>, no lo quitó.</td></tr>
+        <tr><td>Más de 5000 ml</td><td>El <code>CHECK</code> de <code>agua</code> lo rechaza aunque se salte la validación Java.</td></tr>
+        <tr><td>Punta a punta</td><td>Agua registrada por la API aparece en su lista y <strong>no</strong> en la de pesos.</td></tr>
       </table></div>
       <div class="warn"><strong>La trampa de la caché de primer nivel</strong>Hibernate guarda en memoria las entidades que ya conoce dentro de una transacción. Si guardas un objeto y justo después lo buscas por id, Hibernate te devuelve <em>el mismo objeto de memoria</em> sin preguntar a la base de datos, y el test pasaría aunque PostgreSQL hubiera guardado otra cosa. Por eso el test de decimales llama a <code>entityManager.clear()</code> antes de leer: obliga a hacer un <code>SELECT</code> real. Esta trampa la detectó una revisión mirando el log de SQL: el test solo hacía un <code>INSERT</code>.</div>
 

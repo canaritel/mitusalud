@@ -9,14 +9,16 @@ La revisión se detuvo en la pieza 8 al detectar que se estaba **sobrediseñando
 - **Se implementa en el próximo paso:** lo necesario para el recorrido pequeño del peso.
 - **Condición futura, revisable:** el problema y sus límites están identificados y deben respetarse, pero el mecanismo descrito es una propuesta. Se revisará cuando aparezca la función que lo necesite, y solo entrará si simplifica ese código. Los requisitos del backlog asociados siguen vigentes y no se dan por cumplidos antes.
 
-## Se implementa en el próximo paso
+## Implementado
+
+Peso (V2) y agua (V3) siguen estas decisiones.
 
 | # | Decisión |
 |---|---|
 | 1 | Tablas: `observation` común + una tabla de detalle por tipo, con FK compuesta `(observation_id, type)` |
 | 1b | Mapeo Java: **una sola implementación**, herencia `JOINED`. Validado: guarda ambas filas y Hibernate no envía `peso.type`. La comprobación de `@Version` sobre cambios solo del detalle se hará con la edición (pieza 6); las tablas son iguales con uno a uno, así que un cambio de mapeo no requeriría migración |
 | 2 | Identificadores UUID v7 generados con Hibernate; cronología por `observed_at` con `id` de desempate |
-| 7 | Solo unidades canónicas (`kilos` con 2 decimales), sin redondeos silenciosos |
+| 7 | Solo unidades canónicas (`kilos` con 2 decimales, `mililitros` enteros), sin redondeos silenciosos |
 | 9 | `observed_at TIMESTAMPTZ` en lugar de solo fecha; la API exige zona horaria y devuelve UTC |
 
 ## Condiciones futuras, revisables
@@ -366,7 +368,7 @@ El diccionario guardaba en cada observación el valor original con su unidad y e
 - La API recibe **exclusivamente** unidades canónicas: `kilos`, `mililitros`, `nivel`. No admite libras ni vasos.
 - Las tablas de detalle tienen solo la columna canónica.
 - **La interfaz respeta la misma fase:** muestra y pide kg y ml explícitamente. No puede ofrecer "vasos" o "libras", convertirlos por su cuenta y enviar solo el resultado, porque se perdería lo declarado.
-- **Precisión definida por tipo y sin redondeos silenciosos:** un valor con más decimales de los admitidos se rechaza con 400. El peso admite 2 decimales (`@Digits(integer = 3, fraction = 2)` en `PesoEntrada`, pendiente de un test que lo compruebe); el agua, mililitros enteros.
+- **Precisión definida por tipo y sin redondeos silenciosos:** un valor con más decimales de los admitidos se rechaza con 400. El peso admite 2 decimales (`@Digits(integer = 3, fraction = 2)` en `PesoEntrada`); el agua, mililitros enteros. Ojo: por defecto Jackson convierte un decimal en entero truncándolo (`250.5` → `250`) sin avisar; se desactiva con `spring.jackson.deserialization.accept-float-as-int=false`. Ambos casos tienen test.
 
 Mientras no existan conversiones, se conserva exactamente el valor canónico aceptado: no hay nada declarado que perder.
 
