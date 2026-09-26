@@ -1,86 +1,85 @@
 # Stack tecnológico
 
-Decisiones del 26/09/2026. Donde este documento difiere de la documentación de análisis, manda este documento.
+Propuesta viva, iniciada el 26/09/2026. Donde este documento difiere de la documentación de análisis, manda este documento.
 
-## Visión general
+## Principios
 
-```
-PWA React ──login──► Keycloak (OIDC + PKCE, MFA)
-    │
-    │ petición + token
-    ▼
-  Caddy (TLS) ──► Spring Boot (monolito modular) ──► PostgreSQL
-```
+- **No sobredimensionar.** Cada tecnología entra cuando existe una necesidad real, no por si acaso.
+- **Sencillo antes que fácil.** Se prefieren pocas piezas y poco acopladas, aunque otra opción parezca más rápida al principio.
+- **Comprensible para un junior.** El código lleva comentarios útiles que explican el porqué, no lo que ya dice el código.
+- **Paso a paso.** Se empieza por un esqueleto mínimo que funciona de punta a punta y crece con cada necesidad.
 
-Solo el proxy publica puertos. PostgreSQL, la administración de Keycloak y Actuator nunca son accesibles desde fuera.
+## Estado de cada pieza
+
+- **Aprobada:** se usa desde que haga falta.
+- **Propuesta:** candidata; se decide al llegar a la tarea que la necesite.
 
 ## Backend
 
-| Tecnología | Motivo |
-|---|---|
-| Java 25 (LTS) | LTS vigente; soportada por Spring Boot 4. |
-| Spring Boot 4 | Web, datos, seguridad y observabilidad integrados. |
-| Maven | Gestión de dependencias y build habitual en proyectos Java. |
-| Monolito modular (`diario`, `ingesta`, `analitica`) | Un único propietario y un servidor no justifican microservicios; los módulos mantienen fronteras claras. |
-| Spring Modulith | Verifica las fronteras entre módulos y registra eventos de forma persistente. |
-| Arquitectura hexagonal + ArchUnit | El dominio no depende de Spring, JPA ni proveedores externos; ArchUnit lo comprueba en cada build. |
-| OpenAPI | Contrato publicable de `/api/v1` y fuente del cliente TypeScript. |
+| Tecnología | Estado | Motivo |
+|---|---|---|
+| Java 21 (LTS) | Aprobada | Versión más extendida en empresa junto a 17. Pasar a 25 es un cambio menor cuando convenga. |
+| Spring Boot 4 | Aprobada | Web, datos y seguridad integrados; estándar en Java. |
+| Maven | Aprobada | Gestión de dependencias y build habitual en proyectos Java. |
+| springdoc-openapi | Aprobada | Genera el contrato OpenAPI y Swagger UI a partir de los controllers, sin mantener un YAML a mano. |
+| Módulos por funcionalidad con capas simples (controller, service, repository) | Propuesta | Orden suficiente sin la ceremonia de la arquitectura hexagonal completa. |
+| Spring Modulith | Propuesta | Verifica las fronteras entre módulos cuando haya más de uno con contenido. |
+| Arquitectura hexagonal + ArchUnit | Propuesta | Solo si el dominio crece lo bastante para justificar puertos y adaptadores. |
 
 ## Datos
 
-| Tecnología | Motivo |
-|---|---|
-| PostgreSQL | Datos muy relacionados que exigen integridad: claves foráneas compuestas, restricciones y transacciones. |
-| Flyway | Migraciones versionadas: cualquier instalación llega al mismo esquema. |
-| Outbox en PostgreSQL | Los trabajos pendientes se guardan en la misma transacción que el dato; no se pierden ni se duplican. |
+| Tecnología | Estado | Motivo |
+|---|---|---|
+| PostgreSQL | Aprobada | Datos muy relacionados que exigen integridad: claves foráneas, restricciones y transacciones. |
+| Flyway | Aprobada | Migraciones versionadas: cualquier instalación llega al mismo esquema. |
+| Outbox en PostgreSQL | Propuesta | Para trabajos en segundo plano, cuando existan. |
 
 ## Identidad
 
-| Tecnología | Motivo |
-|---|---|
-| Keycloak | La aplicación no almacena contraseñas; MFA y gestión de sesiones incluidos. |
-| OAuth2 / OIDC, Authorization Code + PKCE | Estándar para clientes en navegador. El backend actúa como Resource Server y solo valida tokens. |
+| Tecnología | Estado | Motivo |
+|---|---|---|
+| Keycloak (OIDC + PKCE) | Propuesta | Login externo con MFA; estándar en empresa, pero pesado para quien despliegue su instancia. |
+| Spring Security con sesión y passkeys | Propuesta | Alternativa más sencilla. Se compara con Keycloak antes del primer dato real. |
 
 ## Frontend
 
-| Tecnología | Motivo |
-|---|---|
-| React + TypeScript | Interfaz por componentes con tipado estático. |
-| Vite | Desarrollo y build del frontend. |
-| SPA sin Next.js | El backend ya es Spring; un servidor Node adicional no aporta nada. |
-| React Router | Navegación entre pantallas. |
-| TanStack Query | Caché, estados de carga, errores y reintentos contra la API. |
-| React Hook Form + Zod | Formularios de registro con validación tipada. |
-| Cliente generado desde OpenAPI (`orval` u `openapi-typescript`) | Frontend y backend comparten contrato; un cambio incompatible rompe la compilación. |
-| react-oidc-context (`oidc-client-ts`) | Login con Keycloak. Los tokens se mantienen en memoria, nunca en `localStorage`. |
-| Tailwind CSS + shadcn/ui | Estilos consistentes, modo claro/oscuro y componentes accesibles. |
-| vite-plugin-pwa | Instalable en móvil y escritorio sin tiendas de aplicaciones. |
+| Tecnología | Estado | Motivo |
+|---|---|---|
+| React + TypeScript | Aprobada | Interfaz por componentes con tipado estático. |
+| Vite | Aprobada | Desarrollo y build del frontend. |
+| SPA sin Next.js | Aprobada | El backend ya es Spring; un servidor Node adicional no aporta nada. |
+| React Router | Propuesta | Cuando haya más de una pantalla. |
+| TanStack Query | Propuesta | Cuando la caché y los reintentos contra la API se noten necesarios. |
+| React Hook Form + Zod | Propuesta | Cuando los formularios crezcan. |
+| Cliente generado desde OpenAPI | Propuesta | Mientras la API sea pequeña, los tipos se escriben a mano. |
+| Tailwind CSS + shadcn/ui | Propuesta | Estilos y componentes accesibles, cuando la interfaz lo pida. |
+| vite-plugin-pwa | Propuesta | Para instalar la aplicación en móvil y escritorio. |
 
 ## Pruebas
 
-| Tecnología | Motivo |
-|---|---|
-| JUnit 5 | Pruebas del backend. |
-| Testcontainers | PostgreSQL y Keycloak reales en las pruebas de integración. |
-| Vitest + Testing Library | Pruebas de componentes React. |
-| Playwright | Pruebas de extremo a extremo en navegador. |
+| Tecnología | Estado | Motivo |
+|---|---|---|
+| JUnit 5 | Aprobada | Viene con Spring Boot. |
+| Testcontainers | Propuesta | PostgreSQL real en las pruebas de integración. |
+| Vitest + Testing Library | Propuesta | Pruebas de componentes React. |
+| Playwright | Propuesta | Pruebas de extremo a extremo en navegador. |
 
 ## Infraestructura
 
-| Tecnología | Motivo |
-|---|---|
-| Docker + Docker Compose | Cualquiera levanta su instancia con `docker compose up`. |
-| Caddy | Proxy con HTTPS y renovación automática de certificados. |
-| GitHub Actions | Build, pruebas y escaneo de secretos y dependencias en cada cambio. |
-| Restic + Backblaze B2 | Copias cifradas fuera del servidor y restauración demostrada. |
+| Tecnología | Estado | Motivo |
+|---|---|---|
+| Docker + Docker Compose | Aprobada | Cualquiera levanta su instancia con `docker compose up`. |
+| GitHub Actions | Propuesta | Build y pruebas en cada cambio. |
+| Caddy | Propuesta | Proxy con HTTPS automático, al desplegar en el VPS. |
+| Restic + Backblaze B2 | Propuesta | Copias cifradas fuera del servidor, antes del primer dato real. |
 
 ## Mensajería: sin broker
 
-No se usa RabbitMQ, Kafka ni ningún otro broker. Con un único proceso y un único propietario, el volumen es de decenas de eventos al día y el outbox en PostgreSQL cubre la necesidad.
+No se usa RabbitMQ, Kafka ni ningún otro broker. Con un único proceso y un único propietario, el volumen es de decenas de eventos al día.
 
 Criterio para revisarlo:
 
-- **Cola de trabajos (RabbitMQ):** solo si el procesamiento pesado (PDF, fotos, voz con IA; gates G4 y G5) pasa a un worker independiente. Spring Modulith puede externalizar entonces los eventos ya registrados sin rehacer el dominio.
+- **Cola de trabajos (RabbitMQ):** solo si el procesamiento pesado (PDF, fotos, voz con IA; gates G4 y G5) pasa a un worker independiente.
 - **Streaming (Kafka o similar):** no se prevé. Resuelve volúmenes altos, muchos consumidores y reprocesado del histórico, ninguno de los cuales existe en una instancia personal.
 
 Añadir un broker obliga a cada persona que despliegue su instancia a operarlo, respaldarlo y reservarle memoria, así que solo entra con un consumidor real.
@@ -88,5 +87,5 @@ Añadir un broker obliga a cada persona que despliegue su instancia a operarlo, 
 ## Diferencias con la documentación de análisis
 
 - Frontend en React en lugar de Angular.
-- Java 25 en lugar de Java 21.
+- Arquitectura hexagonal, Keycloak y el resto de piezas del documento técnico pasan a ser propuestas que se deciden al llegar a cada tarea.
 - Proyecto publicado con licencia AGPL-3.0 y desplegable por terceros, con un propietario por instancia.
