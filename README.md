@@ -1,6 +1,6 @@
-# Diario personal
+# mitusalud
 
-Nombre técnico provisional del producto. No es una marca definitiva.
+Nombre provisional del producto. No es una marca definitiva.
 
 Aplicación web personal para registrar y relacionar alimentación, sueño, actividad, gimnasio, medicación, suplementos, analíticas y contexto vital. Su finalidad es conservar un historial longitudinal útil y trazable para el propio usuario.
 
@@ -27,7 +27,7 @@ Aplicación web personal para registrar y relacionar alimentación, sueño, acti
 
 ## Documentación canónica
 
-La documentación aprobada permanece en `C:\Repos\curriculum\output`:
+La documentación de análisis aprobada se mantiene fuera de este repositorio:
 
 - `Auditoria_apps_salud_IA_open_source_2026.docx`
 - `Documento_tecnico_diario_personal_IA_2026.docx` — v0.5
@@ -35,12 +35,14 @@ La documentación aprobada permanece en `C:\Repos\curriculum\output`:
 - `Wireframes_diario_personal_v9.docx`
 - `Threat_model_diario_personal_2026.docx`
 
-Si este repositorio contradice esos documentos, mandan los documentos canónicos.
+Si este repositorio contradice esos documentos, mandan los documentos canónicos, salvo en las decisiones tecnológicas recogidas en [`docs/STACK.md`](docs/STACK.md), que son posteriores.
 
 ## Ejecución
 
-El trabajo se gobierna mediante [`docs/BACKLOG_V3.md`](docs/BACKLOG_V3.md). Las tareas locales pueden avanzar sin contratar servicios. S-01 y S-10 requieren autorización expresa de gasto.
+El stack está descrito en [`docs/STACK.md`](docs/STACK.md). El trabajo se gobierna mediante [`docs/BACKLOG_V3.md`](docs/BACKLOG_V3.md). Las tareas locales pueden avanzar sin contratar servicios. S-01 y S-10 requieren autorización expresa de gasto.
 
 ## Licencia
 
-Repositorio privado, todos los derechos reservados. No se ha aprobado todavía una licencia de código abierto.
+Copyright © 2026 Antonio González Bonilla.
+
+Publicado bajo la [GNU Affero General Public License v3.0](LICENSE). Quien lo modifique y lo ofrezca como servicio en red debe publicar también su código modificado.

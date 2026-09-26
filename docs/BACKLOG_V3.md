@@ -2,7 +2,7 @@
 
 Backlog v3 · 29/08/2026 · 41 tareas: 29 locales y 12 de servidor.
 
-Los cinco DOCX de `C:\Repos\curriculum\output` son la referencia canónica. Este backlog traduce sus decisiones a trabajo ejecutable; no puede modificar su alcance por sí solo.
+Los cinco documentos de análisis enumerados en el README son la referencia canónica. Este backlog traduce sus decisiones a trabajo ejecutable; no puede modificar su alcance por sí solo.
 
 ## Reglas que no se saltan
 
@@ -65,7 +65,7 @@ Los cinco DOCX de `C:\Repos\curriculum\output` son la referencia canónica. Este
 
 | ID | Tarea | Depende | Criterio de aceptación |
 |---|---|---|---|
-| L-27 | PWA Angular instalable | L-09 | Instalable en móvil y escritorio, modos claro y oscuro, sin contenido sensible en `localStorage`. |
+| L-27 | PWA React instalable | L-09 | Instalable en móvil y escritorio, modos claro y oscuro, sin contenido sensible en `localStorage`. |
 | L-28 | Pantalla Hoy, rápida y normal | L-19 a L-27 | Una pantalla colapsada o desplegada, atajos directos y resumen diario. Lee periodos abiertos de L-23 y etiquetas de L-24 como funciones separadas. Sin rachas ni porcentajes. |
 | L-29 | Línea temporal, edición y resumen semanal | L-17, L-23, L-24, L-27 | Filtra por `ObservationTag`, superpone `ContextPeriod` por tiempo sin fingir relación directa, pagina de forma estable, muestra revisiones y produce un resumen descriptivo y honesto. |
 
@@ -118,7 +118,7 @@ Hasta entonces solo se permiten datos sintéticos.
 
 ## Estado inicial
 
-- L-01: completada. Repositorio, README, límites y licencia privada establecidos.
+- L-01: completada. Repositorio, README, límites y licencia AGPL-3.0 establecidos.
 - L-02 a L-29: pendientes.
 - S-01 y S-10: bloqueadas por gasto.
 - Resto de tareas de servidor: pendientes de sus dependencias.
