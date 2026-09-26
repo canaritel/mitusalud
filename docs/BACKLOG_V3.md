@@ -53,8 +53,8 @@ Los cinco documentos de análisis enumerados en el README son la referencia can�
 
 | ID | Tarea | Depende | Criterio de aceptación |
 |---|---|---|---|
-| L-19 | Alta: zona horaria, unidades, peso y altura | L-14 | Zona horaria y una medición fechada de altura obligatorias; peso opcional. Peso y altura son observaciones, no campos sobrescritos del perfil. |
-| L-20 | Registros directos: agua, peso y energía | L-15 | Se escriben confirmados. Agua conserva unidad declarada y mililitros; energía admite varias mediciones diarias con hora y nota. |
+| L-19 | Alta: zona horaria, unidades, peso y altura | L-14 | Zona horaria y una medición fechada de altura obligatorias; peso opcional. Peso y altura son observaciones, no campos sobrescritos del perfil. **Revisada (pieza 7):** en la fase actual solo unidades canónicas; la preferencia de unidades alternativas (lb) activa la regla de conservar lo declarado de la pieza 7 de [`MODELO_DATOS.md`](MODELO_DATOS.md). |
+| L-20 | Registros directos: agua, peso y energía | L-15 | Se escriben confirmados; energía admite varias mediciones diarias con hora y nota. **Revisada (pieza 7):** en la fase actual, agua en mililitros enteros y peso en kilos con 2 decimales, sin conversiones. **Pendiente:** el agua en vasos no se da por terminada hasta conservar cantidad declarada, unidad y tamaño aplicado (`ml_por_unidad`). |
 | L-21 | `MedicationPlan` y `SupplementPlan` | L-14 | Tablas separadas; `indicatedBy` opcional en suplementos. Las pautas finalizadas no se borran. |
 | L-22 | Tomas mediante `IntakeDetail` | L-21 | Exclusividad y FK compuestas; solo registra tomas reales, nunca la ausencia de una toma. |
 | L-23 | `ContextPeriod` | L-14 | `type`, `startedAt`, `endedAt`, `note` y `source`; fin no anterior al inicio, fin nulo significa activo y se permiten periodos simultáneos. |

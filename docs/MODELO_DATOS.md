@@ -17,7 +17,7 @@ Por ahora es **solo documentación**: el código sigue con la tabla `peso` provi
 | 4 | Idempotencia: cabecera `Idempotency-Key` y tabla `idempotency_record` | **Decidida**, pendiente de implementar |
 | 5 | `AuditEvent`: un evento por operación de negocio, sin contenido | **Decidida**, pendiente de implementar |
 | 6 | Historial de ediciones: foto del estado anterior en JSON | **Decidida**, pendiente de implementar con la edición |
-| 7 | Valor o rango, unidad original y normalizada | Pendiente |
+| 7 | Unidades canónicas ahora; conservar lo declarado cuando haya conversión; rangos aplazados | **Decidida** |
 | 8 | Procedencia (`source`: directo, IA, importado) | Pendiente |
 | 9 | `observedAt` (fecha y hora) en lugar de solo fecha | Pendiente |
 
@@ -337,4 +337,54 @@ Cada edición guarda una **foto del estado anterior** (observación + detalle) e
 4. Una versión desactualizada enviada por el cliente recibe 409.
 5. Borrar la observación elimina sus revisiones; la auditoría permanece.
 6. Intentar cambiar el `type` se rechaza.
+
+## Pieza 7: valores, unidades y rangos
+
+### Contexto
+
+El diccionario guardaba en cada observación el valor original con su unidad y el valor normalizado, y admitía punto o rango completo. Con la pieza 1, los valores viven en cada tabla de detalle con nombre propio (`kilos`, `mililitros`, `nivel`), así que esta pieza decide cuándo conservar la unidad declarada y qué tipos admiten rangos.
+
+### Fase actual: solo unidades canónicas
+
+- La API recibe **exclusivamente** unidades canónicas: `kilos`, `mililitros`, `nivel`. No admite libras ni vasos.
+- Las tablas de detalle tienen solo la columna canónica.
+- **La interfaz respeta la misma fase:** muestra y pide kg y ml explícitamente. No puede ofrecer "vasos" o "libras", convertirlos por su cuenta y enviar solo el resultado, porque se perdería lo declarado.
+- **Precisión definida por tipo y sin redondeos silenciosos:** un valor con más decimales de los admitidos se rechaza con 400. El peso admite 2 decimales (`@Digits(integer = 3, fraction = 2)` en `PesoEntrada`, pendiente de un test que lo compruebe); el agua, mililitros enteros.
+
+Mientras no existan conversiones, se conserva exactamente el valor canónico aceptado: no hay nada declarado que perder.
+
+### Fase con conversiones: conservar lo declarado
+
+Se aplica cuando entren unidades alternativas o atajos (libras, vasos; L-19 y L-20). Queda decidida desde ahora:
+
+> Si un valor llega en una unidad distinta de la canónica, se conserva lo declarado junto al valor normalizado.
+
+| Entrada | Qué se guarda |
+|---|---|
+| `72,35 kg` | `kilos = 72,35`; sin duplicar |
+| `160 lb` | `kilos` normalizado + `cantidad_declarada = 160` + `unidad_declarada = 'lb'` |
+| `2 vasos` | `mililitros` + `cantidad_declarada = 2` + `unidad_declarada = 'vaso'` + `ml_por_unidad` (tamaño del vaso aplicado ese día) |
+| Energía `3` | `nivel = 3`; no hay conversión |
+
+Reglas de esa fase:
+
+- El cliente declara cantidad y unidad; **el servidor calcula el valor normalizado**. El cliente no puede enviar ambos.
+- `cantidad_declarada` y `unidad_declarada` van juntas o ninguna (`CHECK`).
+- Cuando la conversión depende de una configuración (el tamaño del vaso), se conserva el factor aplicado.
+- Cambiar una configuración **no recalcula registros antiguos**. Conservar lo declarado permite revisar una conversión equivocada, no reaplicar las preferencias actuales.
+- Si se descartara el original, se aceptaría expresamente la pérdida: que una conversión concreta sea reversible depende de la precisión y el redondeo, no está garantizado en general.
+- `Capture` (G3/G5) no sustituye esta procedencia estructurada: su conservación y borrado se deciden aparte.
+
+### Rangos
+
+Ningún registro directo actual (peso, agua, energía) los necesita. Se decidirán por tipo cuando exista una necesidad concreta (por ejemplo, estimaciones de calorías de una comida, bloqueadas en la v1), con la regla del diccionario: ambos límites o ninguno, y el mínimo no mayor que el máximo.
+
+### Sustituye al diccionario
+
+Las columnas genéricas `originalValue`, `originalUnit`, `value`, `valueLow`, `valueHigh` y `unit` de `Observation` desaparecen: cada tabla de detalle declara sus columnas canónicas y, cuando haya conversión, las declaradas.
+
+### Pruebas obligatorias al implementar
+
+1. Un valor con más decimales de los admitidos se rechaza con 400, sin redondear.
+2. En la fase con conversiones: se guardan lo declarado y el normalizado calculado por el servidor, y un cambio posterior de configuración no altera registros existentes.
 
