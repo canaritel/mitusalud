@@ -77,6 +77,19 @@ Propuesta viva, iniciada el 26/09/2026. Donde este documento difiere de la docum
 | Caddy | Propuesta | Proxy con HTTPS automático, al desplegar en el VPS. |
 | Restic + Backblaze B2 | Propuesta | Copias cifradas fuera del servidor, antes del primer dato real. |
 
+## Entorno de desarrollo
+
+- Backend y frontend se ejecutan directamente en el equipo de desarrollo (`./mvnw spring-boot:run` y `npm run dev`); solo necesitan Java 21 y Node.
+- PostgreSQL 17 corre en Docker en un servidor Linux de la red local, en un contenedor propio que no se comparte con otros proyectos.
+- En ese servidor PostgreSQL escucha solo en `127.0.0.1:5433`. El equipo de desarrollo llega mediante un túnel SSH:
+
+  ```
+  ssh -N -L 5433:localhost:5433 usuario@servidor
+  ```
+
+  Con el túnel abierto, la aplicación ve la base de datos en `localhost:5433`.
+- El `compose.yaml` llega al servidor clonando este repositorio. La contraseña va en un `.env` que solo existe en el servidor.
+
 ## Mensajería: sin broker
 
 No se usa RabbitMQ, Kafka ni ningún otro broker. Con un único proceso y un único propietario, el volumen es de decenas de eventos al día.
