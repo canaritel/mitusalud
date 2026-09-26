@@ -30,6 +30,7 @@ Propuesta viva, iniciada el 26/09/2026. Donde este documento difiere de la docum
 | Spring Data JPA | Aprobada | Acceso a PostgreSQL; es lo habitual en empresa. |
 | Bean Validation | Aprobada | Reglas declaradas con anotaciones en los records (`@NotNull`, `@Positive`). |
 | ProblemDetail (RFC 9457) | Aprobada | Formato de error estándar en toda la API; viene con Spring. |
+| Idiomas: español e inglés | Aprobada | La API responde según la cabecera `Accept-Language`; español por defecto y para cualquier idioma no admitido. Textos propios en `messages*.properties`. |
 | Spring Boot DevTools | Aprobada | Reinicio automático al guardar, solo en desarrollo. |
 | Actuator (solo `health`) | Aprobada | Estado de la aplicación y la base de datos para healthchecks. |
 | Virtual threads | Aprobada | Concurrencia de Java 21 activada con una propiedad, sin cambiar el código. |

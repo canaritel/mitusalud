@@ -1,5 +1,6 @@
 package io.github.canaritel.mitusalud.comun;
 
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
@@ -9,8 +10,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.TreeMap;
 
 /**
  * Da formato a los errores de toda la API.
@@ -18,10 +19,11 @@ import java.util.Map;
  * Hereda de ResponseEntityExceptionHandler, que ya convierte los errores habituales de Spring
  * (JSON mal formado, método no permitido...) en ProblemDetail (RFC 9457).
  * Solo se cambia el caso de validación, para indicar qué campos fallan.
+ * Los textos se traducen según la cabecera Accept-Language (ver messages*.properties).
  *
  * Ejemplo de respuesta 400:
  * {
- *   "title": "Bad Request",
+ *   "title": "Petición no válida",
  *   "status": 400,
  *   "detail": "Hay campos con valores no válidos.",
  *   "instance": "/api/v1/pesos",
@@ -36,12 +38,13 @@ public class ManejadorErroresApi extends ResponseEntityExceptionHandler {
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
             MethodArgumentNotValidException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
 
-        ProblemDetail problema = ex.getBody();
-        problema.setDetail("Hay campos con valores no válidos.");
+        // Título y detalle salen de messages*.properties, en el idioma de la petición.
+        ProblemDetail problema = ex.updateAndGetBody(getMessageSource(), LocaleContextHolder.getLocale());
 
         // Un mensaje por campo: si un campo incumple varias reglas, basta con la primera.
-        // LinkedHashMap conserva el orden en que Spring detectó los errores.
-        Map<String, String> errores = new LinkedHashMap<>();
+        // TreeMap ordena los campos alfabéticamente: el validador no garantiza ningún orden
+        // y así la misma petición produce siempre la misma respuesta.
+        Map<String, String> errores = new TreeMap<>();
         ex.getBindingResult().getFieldErrors()
                 .forEach(error -> errores.putIfAbsent(error.getField(), error.getDefaultMessage()));
         problema.setProperty("errores", errores);
