@@ -1,12 +1,13 @@
 package io.github.canaritel.mitusalud.diario.repository;
 
+import io.github.canaritel.mitusalud.UsaBaseDeDatosDeTest;
 import io.github.canaritel.mitusalud.diario.entity.Peso;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -29,17 +30,25 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DataJpaTest
 // Por defecto @DataJpaTest sustituye la base de datos por una en memoria. NONE = usar PostgreSQL real.
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@ActiveProfiles("test") // carga application-test.properties: la base mitusalud_test
+@UsaBaseDeDatosDeTest // base mitusalud_test, protegida contra configuraciones externas
 class PesoRepositoryIT {
 
     @Autowired
     private PesoRepository pesoRepository;
 
+    @Autowired
+    private EntityManager entityManager;
+
     @Test
     void guardaLosKilosConDecimalesExactos() {
         Peso guardado = pesoRepository.saveAndFlush(new Peso(LocalDate.of(2026, 9, 26), new BigDecimal("72.35")));
-
         assertThat(guardado.getId()).isNotNull(); // lo asignó PostgreSQL
+
+        // Hibernate guarda en memoria las entidades que ya conoce (caché de primer nivel).
+        // Sin clear(), findById devolvería el mismo objeto de arriba sin preguntar a PostgreSQL
+        // y el test pasaría aunque la base de datos hubiera guardado otro valor.
+        entityManager.clear();
+
         Peso leido = pesoRepository.findById(guardado.getId()).orElseThrow();
         // compareTo y no equals: para BigDecimal, 72.35 y 72.350 son iguales en valor pero no en equals.
         assertThat(leido.getKilos()).isEqualByComparingTo("72.35");

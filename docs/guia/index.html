@@ -314,7 +314,7 @@
         <tr><td><code>src/main/java</code></td><td>El código Java de la aplicación.</td></tr>
         <tr><td><code>src/main/resources</code></td><td>Todo lo que no es Java pero va dentro de la app: <code>application.properties</code>, los scripts SQL de Flyway en <code>db/migration/</code> y los textos traducidos <code>messages*.properties</code>.</td></tr>
         <tr><td><code>src/test/java</code></td><td>Los tests. No entran en el <code>.jar</code> final.</td></tr>
-        <tr><td><code>src/test/resources</code></td><td>Configuración que solo usan los tests, como <code>application-test.properties</code>, que apunta a la base de datos de test.</td></tr>
+        <tr><td><code>src/test/resources</code></td><td>Configuración que solo usan los tests, como <code>bd-test.properties</code>, que apunta a la base de datos de test.</td></tr>
       </table></div>
 
       <h3>El paquete <code>io.github.canaritel.mitusalud</code></h3>
@@ -492,7 +492,7 @@ docker exec -it mitusalud-postgres psql -U mitusalud -c "ALTER USER mitusalud PA
       <div class="table-wrap"><table>
         <tr><th>Comando</th><th>Qué ejecuta</th><th>Necesita</th></tr>
         <tr><td><code>./mvnw verify</code></td><td>Tests normales (<code>*Test</code>): arquitectura y capa web.</td><td>Nada. Segundos.</td></tr>
-        <tr><td><code>./mvnw verify -Pbd</code></td><td>Lo anterior + tests de integración (<code>*IT</code>) contra PostgreSQL.</td><td>El túnel abierto.</td></tr>
+        <tr><td><code>./mvnw verify -Pbd</code></td><td>Lo anterior + tests de integración (<code>*IT</code>) contra PostgreSQL: repository y punta a punta.</td><td>El túnel abierto.</td></tr>
       </table></div>
       <p>La separación la hace Maven por el nombre de la clase: el plugin <em>surefire</em> ejecuta las <code>*Test</code> siempre, y el plugin <em>failsafe</em> ejecuta las <code>*IT</code> solo con el perfil <code>bd</code> (definido en el <code>pom.xml</code>). Así el día a día no depende del túnel.</p>
 
@@ -513,8 +513,16 @@ docker exec -it mitusalud-postgres psql -U mitusalud -c "ALTER USER mitusalud PA
       </table></div>
       <div class="note"><strong>Un detalle para fijarse</strong><code>@WebMvcTest</code> no carga las clases <code>@Configuration</code> propias. Por eso el test importa <code>ConfiguracionIdioma</code> con <code>@Import</code>; sin ella, los idiomas no funcionarían en el test.</div>
 
-      <h3>Tests de base de datos: <code>PesoRepositoryIT</code></h3>
-      <p>Usan <code>@DataJpaTest</code>, que arranca solo JPA, Flyway y los repositories, contra un <strong>PostgreSQL real</strong>: la base <code>mitusalud_test</code> del servidor, separada de la de desarrollo. La elige <code>src/test/resources/application-test.properties</code>, que se activa con <code>@ActiveProfiles("test")</code>.</p>
+      <h3>Proteger la base de datos en los tests: <code>@UsaBaseDeDatosDeTest</code></h3>
+      <p>Los tests con base de datos deben tocar <strong>solo</strong> <code>mitusalud_test</code>, nunca tu base de desarrollo ni la instalación real de nadie. Todos llevan la anotación <code>@UsaBaseDeDatosDeTest</code>, que agrupa dos protecciones para que ningún test pueda llevar una y olvidar la otra:</p>
+      <ol>
+        <li><strong><code>@TestPropertySource</code> carga <code>bd-test.properties</code>.</strong> Spring decide qué configuración gana por un orden de prioridad, y en ese orden una variable de entorno como <code>SPRING_DATASOURCE_URL</code> gana a los archivos <code>application*.properties</code>. En cambio, <code>@TestPropertySource</code> está por encima de las variables de entorno, así que nada externo puede redirigir los tests.</li>
+        <li><strong><code>GuardiaBaseDeTest</code>, antes de Flyway.</strong> Justo antes de migrar, pregunta a PostgreSQL a qué base está conectado. Si no es <code>mitusalud_test</code>, detiene los tests con el mensaje "Los tests solo pueden usar la base 'mitusalud_test'… No se ha modificado nada." Protege de despistes como editar mal el archivo.</li>
+      </ol>
+      <p>Una anotación que agrupa otras se llama <em>meta-anotación</em>: Spring lee las anotaciones de dentro como si estuvieran puestas en el test.</p>
+
+      <h3>Tests del repository: <code>PesoRepositoryIT</code></h3>
+      <p>Usan <code>@DataJpaTest</code>, que arranca solo JPA, Flyway y los repositories, contra un <strong>PostgreSQL real</strong>.</p>
       <ul>
         <li>Por defecto <code>@DataJpaTest</code> cambiaría la base de datos por una en memoria. <code>@AutoConfigureTestDatabase(replace = NONE)</code> lo impide: una base de datos distinta podría dar por bueno algo que en PostgreSQL falla.</li>
         <li>Cada test corre dentro de una transacción que se deshace al terminar: la base de test queda siempre vacía.</li>
@@ -522,10 +530,15 @@ docker exec -it mitusalud-postgres psql -U mitusalud -c "ALTER USER mitusalud PA
       </ul>
       <div class="table-wrap"><table>
         <tr><th>Test</th><th>Qué garantiza</th></tr>
-        <tr><td>Decimales exactos</td><td>72.35 se guarda y se lee como 72.35.</td></tr>
+        <tr><td>Decimales exactos</td><td>72.35 se guarda y se lee de PostgreSQL como 72.35.</td></tr>
         <tr><td>Orden de la lista</td><td>Del más reciente al más antiguo; el mismo día, el último registrado primero.</td></tr>
         <tr><td>Peso absurdo</td><td>Aunque alguien se salte la validación Java, el <code>CHECK</code> de PostgreSQL lo rechaza. En el log aparece un aviso <code>violates check constraint</code>: es lo esperado.</td></tr>
       </table></div>
+      <div class="warn"><strong>La trampa de la caché de primer nivel</strong>Hibernate guarda en memoria las entidades que ya conoce dentro de una transacción. Si guardas un objeto y justo después lo buscas por id, Hibernate te devuelve <em>el mismo objeto de memoria</em> sin preguntar a la base de datos, y el test pasaría aunque PostgreSQL hubiera guardado otra cosa. Por eso el test de decimales llama a <code>entityManager.clear()</code> antes de leer: obliga a hacer un <code>SELECT</code> real. Esta trampa la detectó una revisión mirando el log de SQL: el test solo hacía un <code>INSERT</code>.</div>
+
+      <h3>Test de punta a punta: <code>PesoApiIT</code></h3>
+      <p>Usa <code>@SpringBootTest</code>, que arranca la aplicación completa, sin nada simulado: HTTP → controller → service → repository → PostgreSQL. Registra un peso por la API y comprueba que aparece en la lista. Los tests de cada capa por separado no ven si las capas encajan entre sí; este sí.</p>
+      <p><code>@Transactional</code> deshace todo al terminar. Funciona porque <code>MockMvc</code> ejecuta la petición en el mismo hilo y la misma transacción que el test.</p>
     </section>
 
     <!-- 9 -->
@@ -572,6 +585,7 @@ cd backend
         <tr><td>Desde otro equipo o el móvil no llega a <code>:8080</code></td><td>Es intencionado: el backend solo escucha en <code>127.0.0.1</code>.</td><td>Úsalo desde el mismo PC. Se abrirá cuando haya login y despliegue.</td></tr>
         <tr><td><code>Could not resolve placeholder 'POSTGRES_PASSWORD'</code></td><td>No encuentra el <code>.env</code>: no existe o no arrancaste desde <code>backend/</code>.</td><td>Crea el <code>.env</code> en la raíz y arranca desde <code>backend/</code>.</td></tr>
         <tr><td><code>database "mitusalud_test" does not exist</code> con <code>-Pbd</code></td><td>Falta crear la base de test.</td><td>Ejecuta el <code>CREATE DATABASE</code> de esta sección en el servidor.</td></tr>
+        <tr><td><code>Los tests solo pueden usar la base 'mitusalud_test'…</code></td><td>El guardia detectó que los tests iban contra otra base de datos.</td><td>Revisa <code>bd-test.properties</code>. No se ha tocado nada.</td></tr>
         <tr><td><code>Port 8080 was already in use</code></td><td>Otra copia de la app sigue abierta.</td><td>Ciérrala (Ctrl+C en su terminal).</td></tr>
         <tr><td><code>Schema-validation: missing table</code></td><td>La entidad no coincide con las tablas.</td><td>Falta un script de Flyway o la entidad tiene un error.</td></tr>
         <tr><td><code>bad interpreter</code> o <code>Permission denied</code> con <code>./mvnw</code></td><td>Saltos de línea de Windows o permiso de ejecución perdido.</td><td>Revisa <code>.gitattributes</code>; como arreglo rápido, <code>chmod +x mvnw</code>.</td></tr>
