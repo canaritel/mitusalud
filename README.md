@@ -21,7 +21,8 @@ Aplicación web personal para registrar y relacionar alimentación, sueño, acti
 
 - Análisis funcional, técnico, de datos y amenazas: cerrado.
 - Backlog ejecutable: v3, 41 tareas.
-- Código de producto: todavía no iniciado.
+- Código de producto: esqueleto del backend (Spring Boot + PostgreSQL) que registra y lista pesos. La tabla `peso` es provisional; ver [`docs/STACK.md`](docs/STACK.md).
+- Entorno de desarrollo: PostgreSQL en un servidor Linux local, solo con datos inventados.
 - Infraestructura contratada: ninguna.
 - Primer dato real: prohibido hasta completar L-29 y S-12.
 

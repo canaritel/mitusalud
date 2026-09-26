@@ -180,6 +180,7 @@
       <h2>1. Qué es mitusalud y cómo encaja todo</h2>
       <p>mitusalud es un diario personal de salud: alimentación, sueño, actividad, gimnasio, medicación, analíticas… Cada persona lo instala en su propio servidor y guarda allí sus datos. No es un servicio compartido: cada instalación tiene un único propietario.</p>
       <p>Hoy existe la primera pieza que funciona de punta a punta: <strong>registrar tu peso y verlo en una lista</strong>. Todo lo demás crecerá sobre ese esqueleto.</p>
+      <div class="note"><strong>Un esqueleto provisional, a propósito</strong>La tabla <code>peso</code> es deliberadamente simple: sirve para comprobar que toda la cadena funciona (API, validación, errores, Flyway, PostgreSQL). El modelo definitivo del backlog, donde el peso es una "observación" con propietario, auditoría y revisiones, se decidirá antes de añadir un segundo tipo de registro. Así no se construye diez veces lo mismo.</div>
 
       <h3>Las piezas y por dónde viajan los datos</h3>
       <div class="zone">
@@ -201,7 +202,7 @@
           <div class="box hl"><b>PostgreSQL 17</b><small>Solo escucha en 127.0.0.1:5433</small></div>
         </div>
       </div>
-      <p>El backend corre en tu PC para que programar y depurar sea cómodo. La base de datos vive en un servidor con Docker, así en tu PC no instalas ni Docker ni PostgreSQL. Los dos se hablan a través de un túnel SSH (lo explica la <a href="#bd">sección 6</a>).</p>
+      <p>El backend corre en tu PC para que programar y depurar sea cómodo, y <strong>solo acepta conexiones desde tu propio PC</strong> (<code>server.address=127.0.0.1</code>): mientras no haya login, nadie más de tu red debe poder leer ni escribir datos. La base de datos vive en un servidor con Docker, así en tu PC no instalas ni Docker ni PostgreSQL. Los dos se hablan a través de un túnel SSH (lo explica la <a href="#bd">sección 6</a>).</p>
     </section>
 
     <!-- 2 -->
@@ -239,7 +240,7 @@
         <tr><th>Archivo</th><th>Para qué sirve y por qué</th></tr>
         <tr><td><code>.gitignore</code></td><td>Lista de archivos que git ignora. Protege secretos (<code>.env</code>, claves <code>*.pem</code>), evita subir lo que se genera solo (<code>target/</code>, <code>node_modules/</code>) y bloquea datos personales (<code>data/</code>, <code>backups/</code>). El repo es público: lo que se sube, lo ve todo el mundo.</td></tr>
         <tr><td><code>.env.example</code></td><td>Plantilla con los nombres de las variables pero <strong>sin valores</strong>. Quien clona el repo la copia como <code>.env</code> y la rellena.</td></tr>
-        <tr><td><code>.env</code></td><td>La configuración real, con la contraseña de la base de datos. Existe en dos sitios con el mismo contenido: en el servidor (lo lee Docker para crear PostgreSQL) y en la raíz del proyecto en tu PC (lo lee el backend para conectarse). Si cambias la contraseña, cámbiala en los dos.</td></tr>
+        <tr><td><code>.env</code></td><td>La configuración real, con la contraseña de la base de datos. Existe en dos sitios con el mismo contenido: en el servidor (lo lee Docker para crear PostgreSQL) y en la raíz del proyecto en tu PC (lo lee el backend para conectarse). Para cambiar la contraseña no basta con editarlos: ver <a href="#bd">sección 6</a>.</td></tr>
         <tr><td><code>compose.yaml</code></td><td>Describe el contenedor de PostgreSQL: imagen, puerto, volumen de datos y comprobación de salud. Con <code>docker compose up -d</code> se arranca todo lo que describe. Detalle en la <a href="#bd">sección 6</a>.</td></tr>
         <tr><td><code>LICENSE</code></td><td>AGPL-3.0: cualquiera puede usar y modificar el código, pero si lo ofrece como servicio en red debe publicar sus cambios. Se llama <code>LICENSE</code> sin extensión porque así GitHub la reconoce y la muestra en la página del repo.</td></tr>
         <tr><td><code>docs/</code></td><td>Documentación que evoluciona con el código. Si cambia una decisión, se cambia aquí en el mismo commit.</td></tr>
@@ -439,6 +440,13 @@ V2__...sql                   <span class="c">← el siguiente cambio</span></pre
 <pre>spring.config.import=optional:file:../.env[.properties]
 spring.datasource.password=${POSTGRES_PASSWORD}</pre>
       <p>La primera línea le dice a Spring que lea el <code>.env</code> de la raíz del proyecto como si fuera un archivo de propiedades. La ruta <code>../</code> es relativa a la carpeta desde la que arrancas, por eso el backend se arranca siempre desde <code>backend/</code>. <code>optional:</code> evita un error si el archivo no existe, por ejemplo en un servidor donde la contraseña llegue como variable de entorno.</p>
+
+      <h3>Cambiar la contraseña más adelante</h3>
+      <p>La imagen de PostgreSQL solo usa <code>POSTGRES_PASSWORD</code> <strong>la primera vez</strong>, cuando el volumen de datos está vacío y crea la base de datos. Después la ignora. Si solo cambias los <code>.env</code>, la base de datos sigue con la contraseña antigua y el backend deja de conectar. El orden correcto:</p>
+<pre><span class="c"># 1. En el servidor, cambia la contraseña dentro de PostgreSQL</span>
+docker exec -it mitusalud-postgres psql -U mitusalud -c "ALTER USER mitusalud PASSWORD 'nueva'"
+
+<span class="c"># 2. Pon la nueva en los dos .env (servidor y PC) y reinicia el backend</span></pre>
     </section>
 
     <!-- 7 -->
@@ -520,7 +528,8 @@ cd backend
       <div class="table-wrap"><table>
         <tr><th>Síntoma</th><th>Causa probable</th><th>Solución</th></tr>
         <tr><td><code>Connection to localhost:5433 refused</code></td><td>El túnel no está abierto.</td><td>Abre la terminal del túnel.</td></tr>
-        <tr><td><code>password authentication failed</code></td><td>Los dos <code>.env</code> tienen contraseñas distintas.</td><td>Copia el mismo valor en ambos.</td></tr>
+        <tr><td><code>password authentication failed</code></td><td>Los dos <code>.env</code> tienen contraseñas distintas, o se cambiaron los <code>.env</code> sin cambiarla dentro de PostgreSQL.</td><td>Copia el mismo valor en ambos; si la cambiaste, sigue la <a href="#bd">sección 6</a>.</td></tr>
+        <tr><td>Desde otro equipo o el móvil no llega a <code>:8080</code></td><td>Es intencionado: el backend solo escucha en <code>127.0.0.1</code>.</td><td>Úsalo desde el mismo PC. Se abrirá cuando haya login y despliegue.</td></tr>
         <tr><td><code>Could not resolve placeholder 'POSTGRES_PASSWORD'</code></td><td>No encuentra el <code>.env</code>: no existe o no arrancaste desde <code>backend/</code>.</td><td>Crea el <code>.env</code> en la raíz y arranca desde <code>backend/</code>.</td></tr>
         <tr><td><code>Port 8080 was already in use</code></td><td>Otra copia de la app sigue abierta.</td><td>Ciérrala (Ctrl+C en su terminal).</td></tr>
         <tr><td><code>Schema-validation: missing table</code></td><td>La entidad no coincide con las tablas.</td><td>Falta un script de Flyway o la entidad tiene un error.</td></tr>

@@ -120,5 +120,6 @@ Hasta entonces solo se permiten datos sintéticos.
 
 - L-01: completada. Repositorio, README, límites y licencia AGPL-3.0 establecidos.
 - L-02 a L-29: pendientes.
+- Esqueleto previo, fuera del backlog: backend que registra y lista pesos en una tabla `peso` provisional, para validar la cadena API → validación → Flyway → PostgreSQL. No cumple todavía L-14 ni L-20; ver `docs/STACK.md`, sección "Esqueleto provisional".
 - S-01 y S-10: bloqueadas por gasto.
 - Resto de tareas de servidor: pendientes de sus dependencias.

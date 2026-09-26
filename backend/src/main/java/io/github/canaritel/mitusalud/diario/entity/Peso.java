@@ -14,6 +14,10 @@ import java.time.LocalDate;
 /**
  * Un registro de peso: una fila de la tabla {@code peso}.
  * La tabla la crea Flyway (V1__crear_tabla_peso.sql); esta clase solo la refleja.
+ *
+ * Provisional: es el esqueleto que valida la cadena completa. En el modelo definitivo del
+ * backlog el peso será una Observation (con propietario, auditoría y revisiones).
+ * Ver docs/STACK.md, sección "Esqueleto provisional".
  */
 @Entity
 @Table(name = "peso")

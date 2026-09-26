@@ -86,6 +86,14 @@ Propuesta viva, iniciada el 26/09/2026. Donde este documento difiere de la docum
 | Caddy | Propuesta | Proxy con HTTPS automático, al desplegar en el VPS. |
 | Restic + Backblaze B2 | Propuesta | Copias cifradas fuera del servidor, antes del primer dato real. |
 
+## Esqueleto provisional
+
+El primer paso de código registra y lista pesos en una tabla `peso` simple (`V1__crear_tabla_peso.sql`). Sirve para validar la cadena completa: API, validación, errores, Flyway y PostgreSQL.
+
+- No sigue todavía el modelo del backlog, donde el peso es una `Observation` con propietario, idempotencia, auditoría y revisiones (L-14 a L-20).
+- Cuando se adopte el modelo definitivo, una migración de Flyway trasladará o descartará estos datos; solo hay datos inventados.
+- **No se añade un segundo tipo de registro** (agua, energía…) hasta revisar y decidir ese modelo, pieza a pieza y con el mismo criterio de no sobredimensionar.
+
 ## Entorno de desarrollo
 
 - Backend y frontend se ejecutan directamente en el equipo de desarrollo (`./mvnw spring-boot:run` y `npm run dev`); solo necesitan Java 21 y Node.
