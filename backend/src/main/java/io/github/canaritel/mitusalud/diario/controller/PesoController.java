@@ -28,7 +28,7 @@ public class PesoController {
         this.pesoService = pesoService;
     }
 
-    // POST /api/v1/pesos con {"fecha": "2026-09-26", "kilos": 72.35}
+    // POST /api/v1/pesos con {"observadoEn": "2026-09-26T08:30:00+02:00", "kilos": 72.35}
     // @Valid aplica las reglas de PesoEntrada; si fallan, Spring responde 400 con un ProblemDetail.
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)

@@ -14,10 +14,10 @@ La revisión se detuvo en la pieza 8 al detectar que se estaba **sobrediseñando
 | # | Decisión |
 |---|---|
 | 1 | Tablas: `observation` común + una tabla de detalle por tipo, con FK compuesta `(observation_id, type)` |
-| 1b | Mapeo Java: **una sola implementación**, herencia `JOINED`, validada con un ejemplo pequeño (guardar ambas filas y que `@Version` detecte un cambio solo del detalle). Si no lo cumple, relación uno a uno |
+| 1b | Mapeo Java: **una sola implementación**, herencia `JOINED`. Validado: guarda ambas filas y Hibernate no envía `peso.type`. La comprobación de `@Version` sobre cambios solo del detalle se hará con la edición (pieza 6); las tablas son iguales con uno a uno, así que un cambio de mapeo no requeriría migración |
 | 2 | Identificadores UUID v7 generados con Hibernate; cronología por `observed_at` con `id` de desempate |
 | 7 | Solo unidades canónicas (`kilos` con 2 decimales), sin redondeos silenciosos |
-| 9 | `observed_at` (fecha y hora con zona) en lugar de solo fecha: se concreta en el propio paso |
+| 9 | `observed_at TIMESTAMPTZ` en lugar de solo fecha; la API exige zona horaria y devuelve UTC |
 
 ## Condiciones futuras, revisables
 
@@ -426,5 +426,13 @@ Lo que se guarde del proveedor de IA pertenece a la procedencia, no a la auditor
 
 ## Pieza 9: momento del hecho (`observed_at`)
 
-Se concreta en el paso de código del peso, junto a la migración V2.
+### Decisión
+
+- `observation.observed_at TIMESTAMPTZ NOT NULL` sustituye a la fecha sin hora: puedes pesarte por la mañana y por la noche, y la energía tendrá varias mediciones al día.
+- La API recibe `observadoEn` **con zona horaria** (`2026-09-26T08:30:00+02:00` o `…Z`). Sin zona responde 400: "08:30" solo es ambiguo.
+- La API devuelve el instante **en UTC** (`2026-09-26T06:30:00Z`). Mostrarlo en hora local es trabajo de la interfaz, hasta que exista la zona horaria del perfil (L-19).
+- `TIMESTAMPTZ` guarda el **instante**, no la zona original (por ejemplo, `Europe/Madrid`). Si algún día hiciera falta la zona original de cada registro, sería una columna aparte.
+- En Java: `OffsetDateTime` en la entrada y `Instant` en la entidad y la salida.
+
+Implementada en `V2__peso_como_observacion.sql`, con pruebas de entrada `+02:00` → salida UTC y de rechazo sin zona.
 

@@ -38,23 +38,25 @@ class PesoApiIT {
 
     @Test
     void unPesoRegistradoPorLaApiApareceEnLaListaConSusDatos() throws Exception {
+        // Enviado con zona +02:00; la API devuelve el mismo instante en UTC.
         String respuesta = mockMvc.perform(post("/api/v1/pesos")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"fecha": "2026-09-26", "kilos": 71.80}
+                                {"observadoEn": "2026-09-26T08:30:00+02:00", "kilos": 71.80}
                                 """))
                 .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.observadoEn").value("2026-09-26T06:30:00Z"))
                 .andReturn().getResponse().getContentAsString();
 
-        // Se guarda el id real asignado por PostgreSQL para buscar exactamente ese registro,
+        // Se guarda el id real (UUID v7) para buscar exactamente ese registro,
         // y no cualquier otro que casualmente pese lo mismo.
-        Number id = JsonPath.read(respuesta, "$.id");
+        String id = JsonPath.read(respuesta, "$.id");
 
-        // "$[?(@.id == 5)]" es un filtro de JsonPath: los elementos de la lista con ese id.
+        // "$[?(@.id == '...')]" es un filtro de JsonPath: los elementos de la lista con ese id.
         // contains(...) exige que haya exactamente uno y con ese valor.
         mockMvc.perform(get("/api/v1/pesos"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.id == %s)].fecha", id).value(contains("2026-09-26")))
-                .andExpect(jsonPath("$[?(@.id == %s)].kilos", id).value(contains(71.8)));
+                .andExpect(jsonPath("$[?(@.id == '%s')].observadoEn", id).value(contains("2026-09-26T06:30:00Z")))
+                .andExpect(jsonPath("$[?(@.id == '%s')].kilos", id).value(contains(71.8)));
     }
 }

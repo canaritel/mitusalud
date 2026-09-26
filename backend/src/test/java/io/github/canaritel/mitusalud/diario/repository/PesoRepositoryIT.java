@@ -10,8 +10,9 @@ import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabas
 import org.springframework.dao.DataIntegrityViolationException;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -33,6 +34,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @UsaBaseDeDatosDeTest // base mitusalud_test, protegida contra configuraciones externas
 class PesoRepositoryIT {
 
+    private static final Instant MANANA_DIA_26 = Instant.parse("2026-09-26T06:30:00Z");
+
     @Autowired
     private PesoRepository pesoRepository;
 
@@ -40,9 +43,28 @@ class PesoRepositoryIT {
     private EntityManager entityManager;
 
     @Test
-    void guardaLosKilosConDecimalesExactos() {
-        Peso guardado = pesoRepository.saveAndFlush(new Peso(LocalDate.of(2026, 9, 26), new BigDecimal("72.35")));
-        assertThat(guardado.getId()).isNotNull(); // lo asignó PostgreSQL
+    void guardarUnPesoCreaUnaFilaEnCadaTabla() {
+        Peso guardado = pesoRepository.saveAndFlush(new Peso(MANANA_DIA_26, new BigDecimal("72.35")));
+        UUID id = guardado.getId();
+        assertThat(id).isNotNull(); // lo generó Hibernate (UUID v7)
+        assertThat(id.version()).isEqualTo(7);
+
+        // Consultas SQL directas: comprueban lo que hay realmente en cada tabla, sin pasar por la entidad.
+        Object tipoEnObservation = entityManager
+                .createNativeQuery("SELECT type FROM observation WHERE id = :id")
+                .setParameter("id", id).getSingleResult();
+        Object[] filaPeso = (Object[]) entityManager
+                .createNativeQuery("SELECT type, kilos FROM peso WHERE observation_id = :id")
+                .setParameter("id", id).getSingleResult();
+
+        assertThat(tipoEnObservation).isEqualTo("weight"); // lo escribe Hibernate (@DiscriminatorValue)
+        assertThat(filaPeso[0]).isEqualTo("weight");       // lo rellena el DEFAULT de PostgreSQL
+        assertThat((BigDecimal) filaPeso[1]).isEqualByComparingTo("72.35");
+    }
+
+    @Test
+    void guardaLosKilosYElMomentoExactos() {
+        Peso guardado = pesoRepository.saveAndFlush(new Peso(MANANA_DIA_26, new BigDecimal("72.35")));
 
         // Hibernate guarda en memoria las entidades que ya conoce (caché de primer nivel).
         // Sin clear(), findById devolvería el mismo objeto de arriba sin preguntar a PostgreSQL
@@ -52,25 +74,39 @@ class PesoRepositoryIT {
         Peso leido = pesoRepository.findById(guardado.getId()).orElseThrow();
         // compareTo y no equals: para BigDecimal, 72.35 y 72.350 son iguales en valor pero no en equals.
         assertThat(leido.getKilos()).isEqualByComparingTo("72.35");
+        assertThat(leido.getObservadoEn()).isEqualTo(MANANA_DIA_26);
     }
 
     @Test
     void listaDelMasRecienteAlMasAntiguo() {
-        Peso antiguo = pesoRepository.save(new Peso(LocalDate.of(2026, 9, 24), new BigDecimal("73.00")));
-        Peso mananaDelDia26 = pesoRepository.save(new Peso(LocalDate.of(2026, 9, 26), new BigDecimal("72.50")));
-        Peso nocheDelDia26 = pesoRepository.save(new Peso(LocalDate.of(2026, 9, 26), new BigDecimal("72.90")));
+        Peso dia24 = pesoRepository.save(new Peso(Instant.parse("2026-09-24T06:30:00Z"), new BigDecimal("73.00")));
+        Peso manana26 = pesoRepository.save(new Peso(MANANA_DIA_26, new BigDecimal("72.50")));
+        Peso noche26 = pesoRepository.save(new Peso(Instant.parse("2026-09-26T20:00:00Z"), new BigDecimal("72.90")));
 
-        List<Peso> lista = pesoRepository.findAllByOrderByFechaDescIdDesc();
+        List<Peso> lista = pesoRepository.findAllByOrderByObservadoEnDescIdDesc();
 
-        // Mismo día: primero el último registrado (id mayor).
         assertThat(lista).extracting(Peso::getId)
-                .containsExactly(nocheDelDia26.getId(), mananaDelDia26.getId(), antiguo.getId());
+                .containsExactly(noche26.getId(), manana26.getId(), dia24.getId());
+    }
+
+    @Test
+    void registrosDelMismoInstanteSalenSiempreEnElMismoOrden() {
+        // Con el mismo observadoEn desempata el id. No promete orden de inserción, solo que es estable.
+        pesoRepository.save(new Peso(MANANA_DIA_26, new BigDecimal("72.50")));
+        pesoRepository.save(new Peso(MANANA_DIA_26, new BigDecimal("72.60")));
+        pesoRepository.flush();
+
+        List<UUID> primera = pesoRepository.findAllByOrderByObservadoEnDescIdDesc().stream().map(Peso::getId).toList();
+        entityManager.clear();
+        List<UUID> segunda = pesoRepository.findAllByOrderByObservadoEnDescIdDesc().stream().map(Peso::getId).toList();
+
+        assertThat(segunda).containsExactlyElementsOf(primera);
     }
 
     @Test
     void laBaseDeDatosRechazaUnPesoAbsurdoAunqueNoPaseLaValidacionJava() {
         // Aquí no hay controller ni @Valid: se guarda directamente. Aun así, el CHECK de la tabla lo impide.
-        Peso absurdo = new Peso(LocalDate.of(2026, 9, 26), new BigDecimal("600"));
+        Peso absurdo = new Peso(MANANA_DIA_26, new BigDecimal("600"));
 
         assertThatThrownBy(() -> pesoRepository.saveAndFlush(absurdo))
                 .isInstanceOf(DataIntegrityViolationException.class);

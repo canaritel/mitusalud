@@ -88,13 +88,13 @@ Propuesta viva, iniciada el 26/09/2026. Donde este documento difiere de la docum
 | Caddy | Propuesta | Proxy con HTTPS automático, al desplegar en el VPS. |
 | Restic + Backblaze B2 | Propuesta | Copias cifradas fuera del servidor, antes del primer dato real. |
 
-## Esqueleto provisional
+## Del esqueleto al modelo definitivo
 
-El primer paso de código registra y lista pesos en una tabla `peso` simple (`V1__crear_tabla_peso.sql`). Sirve para validar la cadena completa: API, validación, errores, Flyway y PostgreSQL.
+El primer paso de código registró pesos en una tabla `peso` simple (`V1__crear_tabla_peso.sql`) para validar la cadena completa: API, validación, errores, Flyway y PostgreSQL.
 
-- No sigue todavía el modelo del backlog, donde el peso es una `Observation` con propietario, idempotencia, auditoría y revisiones (L-14 a L-20).
-- Cuando se adopte el modelo definitivo, una migración de Flyway trasladará o descartará estos datos; solo hay datos inventados.
-- **No se añade un segundo tipo de registro** (agua, energía…) hasta revisar y decidir ese modelo, pieza a pieza y con el mismo criterio de no sobredimensionar. La revisión está en curso en [`MODELO_DATOS.md`](MODELO_DATOS.md).
+Tras revisar el modelo ([`MODELO_DATOS.md`](MODELO_DATOS.md)), `V2__peso_como_observacion.sql` pasó el peso al modelo definitivo: tabla común `observation` + detalle `peso`, UUID v7 y `observed_at`. Los datos de V1 eran inventados y se descartaron.
+
+Idempotencia, auditoría, historial de ediciones, conversiones de unidades y procedencia son **condiciones futuras**: se construyen cuando aparezca la función que las necesite.
 
 ## Entorno de desarrollo
 

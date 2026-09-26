@@ -24,17 +24,19 @@ public class PesoService {
         this.pesoRepository = pesoRepository;
     }
 
-    // @Transactional: o se guarda todo o nada.
+    // @Transactional: o se guarda todo o nada. Guardar un Peso inserta dos filas (observation y peso);
+    // si falla la segunda, la transacción deshace también la primera.
     @Transactional
     public PesoSalida registrar(PesoEntrada entrada) {
-        Peso peso = pesoRepository.save(new Peso(entrada.fecha(), entrada.kilos()));
+        // toInstant(): se guarda el instante exacto; la zona horaria con la que llegó no se conserva.
+        Peso peso = pesoRepository.save(new Peso(entrada.observadoEn().toInstant(), entrada.kilos()));
         return PesoSalida.de(peso);
     }
 
     // readOnly avisa a la base de datos de que solo se lee, lo que permite optimizar.
     @Transactional(readOnly = true)
     public List<PesoSalida> listar() {
-        return pesoRepository.findAllByOrderByFechaDescIdDesc().stream()
+        return pesoRepository.findAllByOrderByObservadoEnDescIdDesc().stream()
                 .map(PesoSalida::de)
                 .toList();
     }
