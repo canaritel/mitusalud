@@ -4,12 +4,18 @@ Nombre técnico provisional del producto. No es una marca definitiva.
 
 Aplicación web personal para registrar y relacionar alimentación, sueño, actividad, gimnasio, medicación, suplementos, analíticas y contexto vital. Su finalidad es conservar un historial longitudinal útil y trazable para el propio usuario.
 
+## Despliegue
+
+- El código se publica en un repositorio público de GitHub para que cualquiera pueda desplegar su propia instancia en un VPS o servidor similar.
+- Cada instancia tiene un único propietario: no es un servicio compartido y cada persona guarda sus datos en su propio servidor.
+
 ## Límites
 
 - No es un producto sanitario.
 - No diagnostica, prescribe ni sustituye a profesionales sanitarios.
 - No convierte estimaciones de IA en hechos sin confirmación humana.
 - No usa datos personales reales en desarrollo, pruebas, demostraciones ni repositorios.
+- El repositorio es público: no contiene datos personales, secretos ni configuración de una instancia concreta.
 
 ## Estado
 
