@@ -94,7 +94,7 @@ El primer paso de código registra y lista pesos en una tabla `peso` simple (`V1
 
 - No sigue todavía el modelo del backlog, donde el peso es una `Observation` con propietario, idempotencia, auditoría y revisiones (L-14 a L-20).
 - Cuando se adopte el modelo definitivo, una migración de Flyway trasladará o descartará estos datos; solo hay datos inventados.
-- **No se añade un segundo tipo de registro** (agua, energía…) hasta revisar y decidir ese modelo, pieza a pieza y con el mismo criterio de no sobredimensionar.
+- **No se añade un segundo tipo de registro** (agua, energía…) hasta revisar y decidir ese modelo, pieza a pieza y con el mismo criterio de no sobredimensionar. La revisión está en curso en [`MODELO_DATOS.md`](MODELO_DATOS.md).
 
 ## Entorno de desarrollo
 

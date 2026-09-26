@@ -42,7 +42,7 @@ Si este repositorio contradice esos documentos, mandan los documentos canónicos
 
 ## Ejecución
 
-El stack está descrito en [`docs/STACK.md`](docs/STACK.md). La [guía para juniors](docs/guia/index.html) explica cada pieza del proyecto y por qué está así. El trabajo se gobierna mediante [`docs/BACKLOG_V3.md`](docs/BACKLOG_V3.md). Las tareas locales pueden avanzar sin contratar servicios. S-01 y S-10 requieren autorización expresa de gasto.
+El stack está descrito en [`docs/STACK.md`](docs/STACK.md) y las decisiones del modelo de datos en [`docs/MODELO_DATOS.md`](docs/MODELO_DATOS.md). La [guía para juniors](docs/guia/index.html) explica cada pieza del proyecto y por qué está así. El trabajo se gobierna mediante [`docs/BACKLOG_V3.md`](docs/BACKLOG_V3.md). Las tareas locales pueden avanzar sin contratar servicios. S-01 y S-10 requieren autorización expresa de gasto.
 
 ## Licencia
 
