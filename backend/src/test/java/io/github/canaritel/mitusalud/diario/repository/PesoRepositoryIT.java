@@ -85,7 +85,9 @@ class PesoRepositoryIT {
 
         List<Peso> lista = pesoRepository.findAllByOrderByObservadoEnDescIdDesc();
 
-        assertThat(lista).extracting(Peso::getId)
+        // Lambda en vez de Peso::getId: con la referencia a método, el análisis de nulos de VS Code
+        // avisa ("Null type safety") sin que haya ningún problema real. Ver la guía, sección 10.
+        assertThat(lista).extracting(peso -> peso.getId())
                 .containsExactly(noche26.getId(), manana26.getId(), dia24.getId());
     }
 
@@ -102,7 +104,7 @@ class PesoRepositoryIT {
         // con signo y no garantiza el mismo orden que PostgreSQL.
         List<UUID> esperado = a.toString().compareTo(b.toString()) > 0 ? List.of(a, b) : List.of(b, a);
 
-        List<UUID> lista = pesoRepository.findAllByOrderByObservadoEnDescIdDesc().stream().map(Peso::getId).toList();
+        List<UUID> lista = pesoRepository.findAllByOrderByObservadoEnDescIdDesc().stream().map(peso -> peso.getId()).toList();
 
         assertThat(lista).containsExactlyElementsOf(esperado);
     }

@@ -63,8 +63,10 @@ class AguaRepositoryIT {
         entityManager.clear();
 
         // Al consultar Peso, Hibernate une observation solo con la tabla peso (y lo mismo con agua).
-        assertThat(pesoRepository.findAllByOrderByObservadoEnDescIdDesc()).extracting(Peso::getId).containsExactly(idPeso);
-        assertThat(aguaRepository.findAllByOrderByObservadoEnDescIdDesc()).extracting(Agua::getId).containsExactly(idAgua);
+        // Lambda en vez de Peso::getId o Agua::getId: con la referencia a método, el análisis de nulos de VS Code
+        // avisa ("Null type safety") sin que haya ningún problema real. Ver la guía, sección 10.
+        assertThat(pesoRepository.findAllByOrderByObservadoEnDescIdDesc()).extracting(peso -> peso.getId()).containsExactly(idPeso);
+        assertThat(aguaRepository.findAllByOrderByObservadoEnDescIdDesc()).extracting(agua -> agua.getId()).containsExactly(idAgua);
     }
 
     @Test
