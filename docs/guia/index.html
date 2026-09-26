@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guía de mitusalud</title>
+<meta name="description" content="Guía para juniors: qué hace cada pieza de mitusalud y por qué está así.">
+<style>
+  :root {
+    --bg: #fbfaf7;
+    --surface: #ffffff;
+    --surface-2: #f3f1ec;
+    --text: #1f2328;
+    --muted: #5b6069;
+    --border: #e2ded6;
+    --accent: #0f766e;
+    --accent-soft: #e6f4f1;
+    --warn: #9a3412;
+    --warn-soft: #fdf0e7;
+    --code-bg: #f3f1ec;
+    --shadow: 0 1px 2px rgba(0,0,0,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14161a;
+      --surface: #1b1e23;
+      --surface-2: #22262c;
+      --text: #e6e6e3;
+      --muted: #a2a7b0;
+      --border: #30353d;
+      --accent: #4fd1c1;
+      --accent-soft: #15302d;
+      --warn: #f4a36b;
+      --warn-soft: #33241a;
+      --code-bg: #22262c;
+      --shadow: none;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161a;
+    --surface: #1b1e23;
+    --surface-2: #22262c;
+    --text: #e6e6e3;
+    --muted: #a2a7b0;
+    --border: #30353d;
+    --accent: #4fd1c1;
+    --accent-soft: #15302d;
+    --warn: #f4a36b;
+    --warn-soft: #33241a;
+    --code-bg: #22262c;
+    --shadow: none;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  a { color: var(--accent); }
+  code, pre { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: .9em; }
+  :not(pre) > code { background: var(--code-bg); padding: .1em .35em; border-radius: 4px; }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    line-height: 1.5;
+  }
+  .c { color: var(--muted); }
+
+  .layout { display: grid; grid-template-columns: 1fr; max-width: 1180px; margin: 0 auto; }
+  nav.toc {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  nav.toc h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 8px; }
+  nav.toc ol { margin: 0; padding-left: 1.3em; }
+  nav.toc li { margin: 2px 0; }
+  nav.toc a { text-decoration: none; color: var(--text); }
+  nav.toc a:hover { color: var(--accent); }
+  main { padding: 24px 16px 80px; min-width: 0; }
+  @media (min-width: 1000px) {
+    .layout { grid-template-columns: 260px 1fr; }
+    nav.toc {
+      position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto;
+      border-bottom: 0; border-right: 1px solid var(--border); padding: 28px 20px;
+    }
+    main { padding: 40px 48px 100px; }
+  }
+  .content { max-width: 780px; }
+
+  header.hero { margin-bottom: 32px; }
+  header.hero h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 8px; }
+  header.hero p { color: var(--muted); margin: 0; }
+  .meta { font-size: .85rem; color: var(--muted); margin-top: 10px; }
+
+  section { padding-top: 12px; margin-top: 36px; border-top: 1px solid var(--border); }
+  h2 { font-size: 1.45rem; margin: 12px 0 12px; }
+  h3 { font-size: 1.1rem; margin: 26px 0 8px; }
+
+  .table-wrap { overflow-x: auto; margin: 14px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .95rem; }
+  th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  th { background: var(--surface-2); font-weight: 600; }
+
+  .note, .warn {
+    border-radius: 8px; padding: 12px 14px; margin: 16px 0; border: 1px solid var(--border);
+  }
+  .note { background: var(--accent-soft); }
+  .warn { background: var(--warn-soft); }
+  .note strong:first-child, .warn strong:first-child { display: block; margin-bottom: 2px; }
+  .warn strong:first-child { color: var(--warn); }
+
+  /* Diagrama de piezas */
+  .flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; margin: 18px 0; }
+  .box {
+    flex: 1 1 150px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px; box-shadow: var(--shadow); font-size: .9rem;
+  }
+  .box b { display: block; }
+  .box small { color: var(--muted); }
+  .box.hl { border-color: var(--accent); }
+  .arrow { align-self: center; color: var(--muted); font-size: 1.1rem; }
+  .zone { border: 1px dashed var(--border); border-radius: 12px; padding: 10px; margin: 10px 0; }
+  .zone > .label { font-size: .8rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+
+  ol.steps { padding-left: 0; list-style: none; counter-reset: paso; }
+  ol.steps > li {
+    counter-increment: paso; position: relative; padding: 10px 0 10px 44px; border-bottom: 1px solid var(--border);
+  }
+  ol.steps > li::before {
+    content: counter(paso); position: absolute; left: 0; top: 10px; width: 30px; height: 30px; border-radius: 50%;
+    background: var(--accent-soft); color: var(--accent); font-weight: 700; display: grid; place-items: center;
+  }
+  dl.glos dt { font-weight: 700; margin-top: 12px; }
+  dl.glos dd { margin: 2px 0 0 0; color: var(--text); }
+
+  .theme-toggle {
+    float: right; background: var(--surface); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 10px; cursor: pointer; font: inherit; font-size: .85rem;
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav class="toc" aria-label="Índice">
+    <h2>Índice</h2>
+    <ol>
+      <li><a href="#que-es">Qué es y cómo encaja</a></li>
+      <li><a href="#principios">Principios</a></li>
+      <li><a href="#repo">El repo, archivo por archivo</a></li>
+      <li><a href="#backend">El backend por dentro</a></li>
+      <li><a href="#peticion">Recorrido de una petición</a></li>
+      <li><a href="#bd">Base de datos</a></li>
+      <li><a href="#errores">Errores e idiomas</a></li>
+      <li><a href="#tests">Tests</a></li>
+      <li><a href="#arrancar">Cómo arrancarlo</a></li>
+      <li><a href="#descartado">Lo que no usamos</a></li>
+      <li><a href="#glosario">Glosario</a></li>
+    </ol>
+  </nav>
+
+  <main>
+  <div class="content">
+
+    <header class="hero">
+      <button class="theme-toggle" type="button" id="tema" aria-label="Cambiar tema claro u oscuro">Tema</button>
+      <h1>Guía de mitusalud</h1>
+      <p>Qué hace cada pieza del proyecto y, sobre todo, por qué está así. Pensada para alguien que empieza.</p>
+      <div class="meta">Actualizada el 26/09/2026 · Estado: backend con registro de peso</div>
+    </header>
+
+    <!-- 1 -->
+    <section id="que-es">
+      <h2>1. Qué es mitusalud y cómo encaja todo</h2>
+      <p>mitusalud es un diario personal de salud: alimentación, sueño, actividad, gimnasio, medicación, analíticas… Cada persona lo instala en su propio servidor y guarda allí sus datos. No es un servicio compartido: cada instalación tiene un único propietario.</p>
+      <p>Hoy existe la primera pieza que funciona de punta a punta: <strong>registrar tu peso y verlo en una lista</strong>. Todo lo demás crecerá sobre ese esqueleto.</p>
+
+      <h3>Las piezas y por dónde viajan los datos</h3>
+      <div class="zone">
+        <div class="label">Tu PC</div>
+        <div class="flow">
+          <div class="box"><b>Navegador / Swagger UI</b><small>Tú pruebas la API</small></div>
+          <div class="arrow" aria-hidden="true">→</div>
+          <div class="box hl"><b>Backend Spring Boot</b><small>localhost:8080</small></div>
+          <div class="arrow" aria-hidden="true">→</div>
+          <div class="box"><b>Extremo del túnel SSH</b><small>localhost:5433</small></div>
+        </div>
+      </div>
+      <div class="flow" style="justify-content:center;margin:0"><div class="arrow" aria-hidden="true">↓ túnel SSH cifrado ↓</div></div>
+      <div class="zone">
+        <div class="label">Servidor Linux</div>
+        <div class="flow">
+          <div class="box"><b>Docker</b><small>Ejecuta el contenedor</small></div>
+          <div class="arrow" aria-hidden="true">→</div>
+          <div class="box hl"><b>PostgreSQL 17</b><small>Solo escucha en 127.0.0.1:5433</small></div>
+        </div>
+      </div>
+      <p>El backend corre en tu PC para que programar y depurar sea cómodo. La base de datos vive en un servidor con Docker, así en tu PC no instalas ni Docker ni PostgreSQL. Los dos se hablan a través de un túnel SSH (lo explica la <a href="#bd">sección 6</a>).</p>
+    </section>
+
+    <!-- 2 -->
+    <section id="principios">
+      <h2>2. Principios</h2>
+      <p>Estas reglas explican casi todas las decisiones del proyecto. Cuando dudes de por qué algo es así, empieza por aquí.</p>
+      <div class="table-wrap"><table>
+        <tr><th>Principio</th><th>Qué significa en la práctica</th></tr>
+        <tr><td><strong>No sobredimensionar</strong></td><td>Una tecnología entra cuando hay una necesidad real, no "por si acaso". Cada pieza extra hay que instalarla, configurarla, entenderla y protegerla.</td></tr>
+        <tr><td><strong>Sencillo antes que fácil</strong></td><td>"Fácil" es lo que parece rápido hoy (un generador mágico, una librería que lo hace todo). "Sencillo" es lo que tiene pocas piezas y poco enredadas. Elegimos lo sencillo aunque cueste un poco más al principio.</td></tr>
+        <tr><td><strong>Comprensible para un junior</strong></td><td>El código lleva comentarios que explican <em>por qué</em>, no lo que ya se lee en el código.</td></tr>
+        <tr><td><strong>DTOs mínimos</strong></td><td>Nada de cinco clases por concepto. Una entidad y, como mucho, un <code>record</code> de entrada y otro de salida, de una línea cada uno. Conversión a mano, sin librerías de mapeo.</td></tr>
+        <tr><td><strong>Paso a paso</strong></td><td>Primero un esqueleto mínimo que funciona de punta a punta; después crece con cada necesidad.</td></tr>
+      </table></div>
+      <p>La lista completa de tecnologías, con su estado (aprobada, propuesta o descartada), está en <code>docs/STACK.md</code>.</p>
+    </section>
+
+    <!-- 3 -->
+    <section id="repo">
+      <h2>3. El repo, archivo por archivo</h2>
+<pre>mitusalud/
+├── .env.example      <span class="c">plantilla de configuración (sí se sube)</span>
+├── .env              <span class="c">configuración real con la contraseña (NO se sube)</span>
+├── .gitignore        <span class="c">lo que git no debe subir nunca</span>
+├── compose.yaml      <span class="c">cómo arrancar PostgreSQL con Docker</span>
+├── LICENSE           <span class="c">licencia AGPL-3.0</span>
+├── README.md         <span class="c">portada del proyecto en GitHub</span>
+├── docs/
+│   ├── STACK.md      <span class="c">tecnologías y por qué</span>
+│   ├── BACKLOG_V3.md <span class="c">lista de tareas del proyecto</span>
+│   └── guia/         <span class="c">esta guía</span>
+└── backend/          <span class="c">la aplicación Spring Boot (sección 4)</span></pre>
+
+      <div class="table-wrap"><table>
+        <tr><th>Archivo</th><th>Para qué sirve y por qué</th></tr>
+        <tr><td><code>.gitignore</code></td><td>Lista de archivos que git ignora. Protege secretos (<code>.env</code>, claves <code>*.pem</code>), evita subir lo que se genera solo (<code>target/</code>, <code>node_modules/</code>) y bloquea datos personales (<code>data/</code>, <code>backups/</code>). El repo es público: lo que se sube, lo ve todo el mundo.</td></tr>
+        <tr><td><code>.env.example</code></td><td>Plantilla con los nombres de las variables pero <strong>sin valores</strong>. Quien clona el repo la copia como <code>.env</code> y la rellena.</td></tr>
+        <tr><td><code>.env</code></td><td>La configuración real, con la contraseña de la base de datos. Existe en dos sitios con el mismo contenido: en el servidor (lo lee Docker para crear PostgreSQL) y en la raíz del proyecto en tu PC (lo lee el backend para conectarse). Si cambias la contraseña, cámbiala en los dos.</td></tr>
+        <tr><td><code>compose.yaml</code></td><td>Describe el contenedor de PostgreSQL: imagen, puerto, volumen de datos y comprobación de salud. Con <code>docker compose up -d</code> se arranca todo lo que describe. Detalle en la <a href="#bd">sección 6</a>.</td></tr>
+        <tr><td><code>LICENSE</code></td><td>AGPL-3.0: cualquiera puede usar y modificar el código, pero si lo ofrece como servicio en red debe publicar sus cambios. Se llama <code>LICENSE</code> sin extensión porque así GitHub la reconoce y la muestra en la página del repo.</td></tr>
+        <tr><td><code>docs/</code></td><td>Documentación que evoluciona con el código. Si cambia una decisión, se cambia aquí en el mismo commit.</td></tr>
+      </table></div>
+
+      <div class="note"><strong>¿Por qué el compose está en la raíz y no dentro de backend/?</strong>Porque describe infraestructura de todo el proyecto, no solo del backend. Cuando llegue el frontend, seguirá teniendo sentido en la raíz.</div>
+    </section>
+
+    <!-- 4 -->
+    <section id="backend">
+      <h2>4. El backend por dentro</h2>
+<pre>backend/
+├── .gitattributes          <span class="c">saltos de línea correctos por sistema operativo</span>
+├── .mvn/wrapper/
+│   └── maven-wrapper.properties  <span class="c">qué versión de Maven usar</span>
+├── mvnw                    <span class="c">Maven Wrapper para Linux, macOS y Git Bash</span>
+├── mvnw.cmd                <span class="c">Maven Wrapper para Windows</span>
+├── pom.xml                 <span class="c">dependencias y cómo se construye</span>
+├── src/main/java/          <span class="c">código de la aplicación</span>
+├── src/main/resources/     <span class="c">configuración, SQL y textos</span>
+├── src/test/java/          <span class="c">tests</span>
+└── target/                 <span class="c">lo que genera Maven al compilar (no se sube)</span></pre>
+
+      <h3>Maven: qué es</h3>
+      <p>Maven hace dos trabajos:</p>
+      <ul>
+        <li><strong>Descarga las librerías</strong> que declara el <code>pom.xml</code> (Spring, el driver de PostgreSQL…), y las librerías que esas librerías necesitan. Las guarda en <code>~/.m2/repository</code> para no descargarlas otra vez.</li>
+        <li><strong>Construye el proyecto</strong> en fases siempre en el mismo orden: <code>compile</code> → <code>test</code> → <code>package</code> (crea el <code>.jar</code>) → <code>verify</code>. Si pides una fase, se ejecutan también todas las anteriores. Por eso <code>./mvnw verify</code> compila y pasa los tests.</li>
+      </ul>
+
+      <h3><code>.mvn/</code>, <code>mvnw</code> y <code>mvnw.cmd</code>: el Maven Wrapper</h3>
+      <p>Es la respuesta a "¿por qué no tengo que instalar Maven?".</p>
+      <ul>
+        <li><code>mvnw</code> y <code>mvnw.cmd</code> son dos scripts pequeños (uno para Linux/macOS/Git Bash, otro para Windows) que hacen lo mismo que el comando <code>mvn</code>.</li>
+        <li>La primera vez leen <code>.mvn/wrapper/maven-wrapper.properties</code>, descargan exactamente la versión de Maven que dice ahí (ahora la 3.9.16) y la guardan en <code>~/.m2/wrapper</code>. Las siguientes veces la reutilizan.</li>
+        <li>Resultado: cualquiera que clone el repo usa <strong>la misma versión de Maven</strong>, sin instalar nada. Se acabó el "en mi máquina compila".</li>
+      </ul>
+      <p>La carpeta empieza por punto (<code>.mvn</code>) porque en Linux eso la oculta: es configuración de herramientas, no código que tengas que tocar.</p>
+
+      <h3><code>.gitattributes</code>: por qué importan los saltos de línea</h3>
+      <p>Windows termina cada línea con dos caracteres invisibles (CRLF); Linux, con uno (LF). Git puede convertirlos al descargar, y eso rompe <code>mvnw</code> en Linux: la primera línea <code>#!/bin/sh</code> pasaría a terminar en un carácter extra y Linux respondería <code>bad interpreter</code>.</p>
+<pre>/mvnw  text eol=lf     <span class="c"># mvnw siempre con saltos de Linux</span>
+*.cmd  text eol=crlf   <span class="c"># los .cmd siempre con saltos de Windows</span></pre>
+      <p>Además, <code>mvnw</code> está marcado en git como ejecutable, para que en Linux funcione <code>./mvnw</code> sin hacer <code>chmod +x</code>.</p>
+
+      <h3><code>pom.xml</code>: dependencia por dependencia</h3>
+      <p>El <code>pom.xml</code> hereda de <code>spring-boot-starter-parent</code>. Ese "padre" fija versiones compatibles entre sí de cientos de librerías; por eso casi ninguna dependencia lleva número de versión. Un <em>starter</em> es un paquete que agrupa todo lo necesario para una tarea (por ejemplo, <code>starter-webmvc</code> trae el servidor web, Jackson para JSON, etc.).</p>
+      <div class="table-wrap"><table>
+        <tr><th>Dependencia</th><th>Para qué</th></tr>
+        <tr><td><code>spring-boot-starter-webmvc</code></td><td>API REST: servidor Tomcat integrado, controllers y conversión JSON.</td></tr>
+        <tr><td><code>spring-boot-starter-data-jpa</code></td><td>Acceso a la base de datos con JPA/Hibernate y los repositories de Spring Data.</td></tr>
+        <tr><td><code>postgresql</code> <small>(runtime)</small></td><td>El driver que habla con PostgreSQL. Solo hace falta al ejecutar, no al compilar.</td></tr>
+        <tr><td><code>spring-boot-starter-flyway</code> + <code>flyway-database-postgresql</code></td><td>Migraciones: crean y modifican las tablas con scripts SQL versionados.</td></tr>
+        <tr><td><code>spring-boot-starter-validation</code></td><td>Bean Validation: reglas con anotaciones como <code>@NotNull</code> o <code>@Positive</code>.</td></tr>
+        <tr><td><code>spring-boot-starter-actuator</code></td><td>Endpoint <code>/actuator/health</code> para saber si la app y la base de datos están bien.</td></tr>
+        <tr><td><code>springdoc-openapi-starter-webmvc-ui</code></td><td>Genera la documentación OpenAPI leyendo los controllers y sirve Swagger UI para probar la API desde el navegador.</td></tr>
+        <tr><td><code>spring-boot-devtools</code> <small>(runtime, optional)</small></td><td>Reinicia la app al recompilar. Solo para desarrollo: no entra en el <code>.jar</code> final.</td></tr>
+        <tr><td><code>spring-boot-starter-webmvc-test</code> <small>(test)</small></td><td>JUnit 5, AssertJ y utilidades de test de Spring. Solo existe al ejecutar tests.</td></tr>
+        <tr><td><code>spring-modulith-starter-test</code> <small>(test)</small></td><td>Comprueba las fronteras entre módulos (<a href="#tests">sección 8</a>).</td></tr>
+      </table></div>
+      <p>Al final del <code>pom.xml</code>, <code>spring-modulith-bom</code> fija la versión de Spring Modulith (como hace el padre con Spring) y <code>spring-boot-maven-plugin</code> añade el comando <code>spring-boot:run</code> y empaqueta la app en un único <code>.jar</code> ejecutable.</p>
+      <div class="warn"><strong>Lo que quitamos a propósito</strong>El generador oficial (Spring Initializr) añadió seis piezas extra de Spring Modulith: observabilidad, integración con Actuator y un registro de eventos en base de datos. No las necesitamos, así que se quitaron. Revisar lo que genera una herramienta es parte del trabajo.</div>
+
+      <h3><code>src/main</code>, <code>src/test</code> y <code>resources</code></h3>
+      <p>Es la estructura estándar de Maven. Como todos los proyectos Java la siguen, no hay que configurar dónde está nada ("convención antes que configuración").</p>
+      <div class="table-wrap"><table>
+        <tr><th>Carpeta</th><th>Contenido</th></tr>
+        <tr><td><code>src/main/java</code></td><td>El código Java de la aplicación.</td></tr>
+        <tr><td><code>src/main/resources</code></td><td>Todo lo que no es Java pero va dentro de la app: <code>application.properties</code>, los scripts SQL de Flyway en <code>db/migration/</code> y los textos traducidos <code>messages*.properties</code>.</td></tr>
+        <tr><td><code>src/test/java</code></td><td>Los tests. No entran en el <code>.jar</code> final.</td></tr>
+      </table></div>
+
+      <h3>El paquete <code>io.github.canaritel.mitusalud</code></h3>
+      <p>En Java, los paquetes empiezan por un dominio que controlas escrito al revés (<code>com.empresa…</code>), para que dos proyectos nunca choquen. El proyecto no tiene dominio propio, y la convención para proyectos de GitHub es <code>io.github.&lt;usuario&gt;</code>.</p>
+
+      <h3>Módulos y capas</h3>
+<pre>io/github/canaritel/mitusalud/
+├── MitusaludApplication.java   <span class="c">arranque</span>
+├── comun/                      <span class="c">módulo: lo que sirve a toda la API</span>
+│   ├── ConfiguracionIdioma.java
+│   └── ManejadorErroresApi.java
+└── diario/                     <span class="c">módulo: el diario</span>
+    ├── controller/PesoController.java  <span class="c">HTTP ↔ Java</span>
+    ├── service/PesoService.java        <span class="c">reglas y transacciones</span>
+    ├── repository/PesoRepository.java  <span class="c">acceso a la tabla</span>
+    ├── entity/Peso.java                <span class="c">la fila de la tabla</span>
+    └── dto/PesoEntrada.java, PesoSalida.java  <span class="c">lo que entra y sale por la API</span></pre>
+      <p><code>MitusaludApplication</code> lleva <code>@SpringBootApplication</code>, que hace dos cosas: busca clases de Spring (<code>@RestController</code>, <code>@Service</code>…) en su paquete y en todos los que cuelgan de él, y configura automáticamente lo que encuentre en el <code>pom.xml</code> (base de datos, web…). Por eso todo el código vive por debajo de ese paquete.</p>
+      <p><strong>Módulos (monolito modular).</strong> Es una sola aplicación, pero cada paquete directo (<code>diario</code>, <code>comun</code>, y en el futuro <code>ingesta</code> y <code>analitica</code>) es un módulo con fronteras: no usa las clases internas de otro módulo y es dueño de sus tablas. Si algún día un módulo necesita ser un servicio aparte, se puede extraer sin desenredar nada. Un test lo vigila (<a href="#tests">sección 8</a>).</p>
+      <p><strong>Capas dentro de cada módulo.</strong> Cada tipo de clase va en su carpeta y cada capa tiene un solo trabajo:</p>
+      <div class="table-wrap"><table>
+        <tr><th>Capa</th><th>Trabajo</th><th>Lo que nunca hace</th></tr>
+        <tr><td><code>controller</code></td><td>Traduce HTTP a llamadas Java y valida la entrada.</td><td>Reglas de negocio o hablar con la base de datos.</td></tr>
+        <tr><td><code>service</code></td><td>Reglas de negocio y transacciones.</td><td>Saber nada de HTTP.</td></tr>
+        <tr><td><code>repository</code></td><td>Leer y escribir en la tabla.</td><td>Decidir nada.</td></tr>
+        <tr><td><code>entity</code></td><td>Representar una fila de la tabla.</td><td>Salir por la API.</td></tr>
+        <tr><td><code>dto</code></td><td>Definir qué entra y qué sale por la API.</td><td>Guardarse en la base de datos.</td></tr>
+      </table></div>
+    </section>
+
+    <!-- 5 -->
+    <section id="peticion">
+      <h2>5. Recorrido de una petición</h2>
+      <p>Qué pasa, paso a paso, cuando registras un peso:</p>
+<pre>POST http://localhost:8080/api/v1/pesos
+Content-Type: application/json
+
+{"fecha": "2026-09-26", "kilos": 72.35}</pre>
+      <ol class="steps">
+        <li><strong>Llega al servidor web.</strong> Tomcat, integrado en la app, recibe la petición y la atiende en un <em>virtual thread</em> (hilo ligero de Java 21), activado con <code>spring.threads.virtual.enabled=true</code>.</li>
+        <li><strong>Spring busca quién la atiende.</strong> Mira la ruta y el método: <code>@RequestMapping("/api/v1/pesos")</code> + <code>@PostMapping</code> → <code>PesoController.registrar</code>.</li>
+        <li><strong>JSON → Java.</strong> Jackson convierte el JSON en un <code>PesoEntrada</code>. Si el JSON está roto o <code>kilos</code> es texto, se corta aquí con un 400.</li>
+        <li><strong>Validación.</strong> <code>@Valid</code> aplica las reglas del record: fecha no nula y no futura, kilos positivos, menores de 500 y con 2 decimales como máximo. Si falla, <code>ManejadorErroresApi</code> responde 400 indicando qué campos fallan (<a href="#errores">sección 7</a>).</li>
+        <li><strong>El controller delega.</strong> Llama a <code>pesoService.registrar(entrada)</code>. No hace nada más.</li>
+        <li><strong>Transacción.</strong> <code>@Transactional</code> abre una transacción: o se guarda todo o nada.</li>
+        <li><strong>Se crea la entidad y se guarda.</strong> <code>new Peso(fecha, kilos)</code> y <code>pesoRepository.save(...)</code>. Hibernate genera el <code>INSERT</code>; PostgreSQL asigna el <code>id</code> y comprueba su propio <code>CHECK</code> sobre los kilos.</li>
+        <li><strong>Java → JSON.</strong> <code>PesoSalida.de(peso)</code> convierte la entidad en el record de salida; Jackson lo pasa a JSON y <code>@ResponseStatus(CREATED)</code> pone el código 201.</li>
+      </ol>
+<pre>HTTP 201 Created
+{"id": 1, "fecha": "2026-09-26", "kilos": 72.35}</pre>
+
+      <h3>¿Por qué dos records y no devolver la entidad?</h3>
+      <ul>
+        <li><strong><code>PesoEntrada</code> no tiene <code>id</code>.</strong> El cliente no puede inventarse ni sobrescribir un id, porque ese campo sencillamente no existe en lo que envía. Es seguridad, no burocracia. Lo mismo servirá para el propietario cuando llegue el login.</li>
+        <li><strong><code>PesoSalida</code> separa la API de la tabla.</strong> Si mañana la tabla gana una columna interna, la API no la expone por accidente ni se rompe sin que te enteres.</li>
+      </ul>
+<pre><span class="c">// Así de pequeños son:</span>
+public record PesoEntrada(@NotNull @PastOrPresent LocalDate fecha, @NotNull @Positive ... BigDecimal kilos) {}
+public record PesoSalida(Long id, LocalDate fecha, BigDecimal kilos) {
+    public static PesoSalida de(Peso peso) { ... }  <span class="c">// conversión a mano</span>
+}</pre>
+
+      <h3>La lista: <code>GET /api/v1/pesos</code></h3>
+      <p>El controller llama a <code>pesoService.listar()</code>, que abre una transacción de solo lectura y llama a <code>findAllByOrderByFechaDescIdDesc()</code>. Ese método no tiene código: Spring Data lee su nombre y genera la consulta <code>ORDER BY fecha DESC, id DESC</code>. Cada entidad se convierte en <code>PesoSalida</code> y se devuelve la lista.</p>
+
+      <h3>Dos ajustes de <code>application.properties</code> que afectan al recorrido</h3>
+      <ul>
+        <li><code>spring.jpa.open-in-view=false</code>: por defecto Spring mantiene abierta la conexión a la base de datos mientras genera la respuesta, lo que permite consultas "escondidas" fuera del service. Se desactiva para que todo acceso a datos ocurra en el service, a la vista.</li>
+        <li><code>spring.jpa.hibernate.ddl-auto=validate</code>: Hibernate no crea ni cambia tablas; solo comprueba que las entidades coinciden con ellas. Las tablas son cosa de Flyway.</li>
+      </ul>
+    </section>
+
+    <!-- 6 -->
+    <section id="bd">
+      <h2>6. Base de datos</h2>
+
+      <h3>PostgreSQL en Docker, en un servidor</h3>
+      <p>PostgreSQL corre en un servidor Linux dentro de un contenedor Docker propio del proyecto. Así no se instala nada en el PC de desarrollo y no se mezcla con bases de datos de otros proyectos.</p>
+<pre>services:
+  postgres:
+    image: postgres:17                  <span class="c"># versión Debian: ordena bien acentos y ñ</span>
+    container_name: mitusalud-postgres
+    restart: unless-stopped             <span class="c"># arranca sola si el servidor se reinicia</span>
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Falta ...}  <span class="c"># sin contraseña, no arranca</span>
+    ports:
+      - "127.0.0.1:5433:5432"           <span class="c"># solo accesible desde el propio servidor</span>
+    volumes:
+      - postgres-datos:/var/lib/postgresql/data  <span class="c"># los datos sobreviven al contenedor</span>
+    healthcheck: ...                    <span class="c"># Docker comprueba que acepta conexiones</span></pre>
+      <p>La línea de <code>ports</code> se lee "puerto del servidor : puerto del contenedor". El <code>127.0.0.1</code> delante hace que nadie de la red pueda conectarse directamente, y el 5433 evita chocar con otros PostgreSQL que usen el 5432.</p>
+
+      <h3>El túnel SSH</h3>
+      <p>Si la base de datos solo escucha dentro del servidor, ¿cómo llega el backend desde tu PC? Con un túnel:</p>
+<pre>ssh -N -L 5433:localhost:5433 usuario@servidor</pre>
+      <div class="table-wrap"><table>
+        <tr><th>Parte</th><th>Significado</th></tr>
+        <tr><td><code>-L 5433:localhost:5433</code></td><td>"Lo que llegue al puerto 5433 de mi PC, envíalo por SSH y entrégalo en <code>localhost:5433</code>, visto <em>desde el servidor</em>".</td></tr>
+        <tr><td><code>-N</code></td><td>No ejecutar ningún comando en el servidor; solo mantener el túnel.</td></tr>
+      </table></div>
+      <p>Con el túnel abierto, para el backend la base de datos está en <code>localhost:5433</code>, como si estuviera en tu PC. Ventajas: el puerto no está abierto a la red y la contraseña viaja cifrada dentro de SSH.</p>
+
+      <h3>Flyway: las tablas se versionan como el código</h3>
+      <p>Las tablas no se crean a mano ni las crea Hibernate. Se escriben scripts SQL numerados en <code>src/main/resources/db/migration/</code>:</p>
+<pre>V1__crear_tabla_peso.sql     <span class="c">← ya existe</span>
+V2__...sql                   <span class="c">← el siguiente cambio</span></pre>
+      <p>Al arrancar, Flyway mira la tabla <code>flyway_schema_history</code> (la crea él) para saber qué scripts ya aplicó, y ejecuta solo los nuevos, en orden. Así cualquier instalación, hoy o dentro de un año, acaba con las mismas tablas.</p>
+      <div class="warn"><strong>Regla de oro</strong>Nunca se modifica un script ya aplicado: Flyway guarda su huella y se negaría a arrancar. Cualquier cambio va en un script nuevo.</div>
+
+      <h3>La tabla <code>peso</code></h3>
+<pre>CREATE TABLE peso (
+    id        BIGINT        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    fecha     DATE          NOT NULL,
+    kilos     NUMERIC(5, 2) NOT NULL CHECK (kilos &gt; 0 AND kilos &lt; 500),
+    creado_en TIMESTAMPTZ   NOT NULL DEFAULT now()
+);</pre>
+      <div class="table-wrap"><table>
+        <tr><th>Elección</th><th>Por qué</th></tr>
+        <tr><td><code>GENERATED ALWAYS AS IDENTITY</code></td><td>PostgreSQL genera el id. Es la forma estándar moderna (antes se usaba <code>SERIAL</code>).</td></tr>
+        <tr><td><code>NUMERIC(5,2)</code> y <code>BigDecimal</code> en Java</td><td>Decimales exactos. Con <code>double</code>, 0.1 + 0.2 no da exactamente 0.3.</td></tr>
+        <tr><td><code>CHECK</code></td><td>La propia base de datos rechaza valores absurdos, aunque el backend tuviera un fallo.</td></tr>
+        <tr><td><code>TIMESTAMPTZ</code></td><td>Momento exacto con zona horaria. Evita líos con horarios de verano o cambios de país.</td></tr>
+        <tr><td>Varios pesos el mismo día</td><td>Permitido: puedes pesarte por la mañana y por la noche.</td></tr>
+      </table></div>
+
+      <h3>Cómo encuentra el backend la contraseña</h3>
+<pre>spring.config.import=optional:file:../.env[.properties]
+spring.datasource.password=${POSTGRES_PASSWORD}</pre>
+      <p>La primera línea le dice a Spring que lea el <code>.env</code> de la raíz del proyecto como si fuera un archivo de propiedades. La ruta <code>../</code> es relativa a la carpeta desde la que arrancas, por eso el backend se arranca siempre desde <code>backend/</code>. <code>optional:</code> evita un error si el archivo no existe, por ejemplo en un servidor donde la contraseña llegue como variable de entorno.</p>
+    </section>
+
+    <!-- 7 -->
+    <section id="errores">
+      <h2>7. Errores e idiomas</h2>
+
+      <h3>ProblemDetail: un formato de error estándar</h3>
+      <p>Todos los errores de la API salen con el mismo formato JSON, definido por el estándar RFC 9457. El frontend siempre sabe dónde mirar:</p>
+<pre>HTTP 400
+{
+  "title": "Petición no válida",
+  "status": 400,
+  "detail": "Hay campos con valores no válidos.",
+  "instance": "/api/v1/pesos",
+  "errores": {
+    "fecha": "debe ser una fecha en el pasado o en el presente",
+    "kilos": "debe ser mayor que 0"
+  }
+}</pre>
+      <p>Lo hace <code>comun/ManejadorErroresApi</code>. Hereda de <code>ResponseEntityExceptionHandler</code>, la clase de Spring que ya convierte los errores habituales en ProblemDetail, y solo cambia el caso de la validación para añadir <code>errores</code>. Los campos salen en orden alfabético para que la misma petición dé siempre la misma respuesta.</p>
+
+      <h3>Español e inglés</h3>
+      <p>El navegador envía en cada petición la cabecera <code>Accept-Language</code> con sus idiomas preferidos. <code>comun/ConfiguracionIdioma</code> admite dos idiomas y elige el mejor:</p>
+      <div class="table-wrap"><table>
+        <tr><th><code>Accept-Language</code></th><th>Respuesta</th></tr>
+        <tr><td>(ninguna)</td><td>Español</td></tr>
+        <tr><td><code>es</code>, <code>es-ES</code></td><td>Español</td></tr>
+        <tr><td><code>en</code>, <code>en-GB</code></td><td>Inglés</td></tr>
+        <tr><td><code>fr</code> u otro no admitido</td><td>Español (sin mezclar idiomas)</td></tr>
+        <tr><td><code>de,en;q=0.8</code></td><td>Inglés: es el mejor de los que admitimos</td></tr>
+      </table></div>
+      <p>Los textos no están escritos en el código. Viven en <code>messages.properties</code> (español) y <code>messages_en.properties</code> (inglés) con las mismas claves. Los mensajes de validación ("debe ser mayor que 0") vienen ya traducidos en Hibernate Validator. Añadir un idioma es crear otro archivo de textos y sumarlo a la lista de <code>ConfiguracionIdioma</code>.</p>
+    </section>
+
+    <!-- 8 -->
+    <section id="tests">
+      <h2>8. Tests</h2>
+      <p>Por ahora hay un test, <code>ModularidadTest</code>, y es de arquitectura:</p>
+<pre>ApplicationModules.of(MitusaludApplication.class).verify();</pre>
+      <p>Spring Modulith analiza el código compilado y falla si un módulo usa clases internas de otro o si dos módulos dependen el uno del otro en círculo. No necesita base de datos, así que siempre se puede ejecutar. Se lanza con:</p>
+<pre>./mvnw verify</pre>
+      <p>Los tests de las capas (controller y repository) están propuestos para el siguiente paso.</p>
+    </section>
+
+    <!-- 9 -->
+    <section id="arrancar">
+      <h2>9. Cómo arrancarlo</h2>
+
+      <h3>Qué necesitas</h3>
+      <ul>
+        <li><strong>En tu PC:</strong> Java 21, Git y un cliente SSH (Windows ya lo trae). Maven no: lo trae el wrapper.</li>
+        <li><strong>En el servidor:</strong> Linux con Docker y Docker Compose, y acceso por SSH con clave.</li>
+      </ul>
+
+      <h3>Una sola vez, en el servidor</h3>
+<pre>git clone https://github.com/canaritel/mitusalud.git
+cd mitusalud
+cp .env.example .env         <span class="c"># y pon una contraseña larga y aleatoria</span>
+chmod 600 .env               <span class="c"># solo tu usuario puede leerlo</span>
+docker compose up -d
+docker ps                    <span class="c"># mitusalud-postgres debe aparecer como "healthy"</span></pre>
+      <p>Para actualizar más adelante: <code>git pull</code> y <code>docker compose up -d</code>.</p>
+
+      <h3>Cada vez que programes, en tu PC</h3>
+      <p>Pon en la raíz del proyecto un <code>.env</code> con la misma contraseña que el del servidor. Después, dos terminales:</p>
+<pre><span class="c"># Terminal 1: el túnel (déjala abierta)</span>
+ssh -N -L 5433:localhost:5433 usuario@servidor
+
+<span class="c"># Terminal 2: el backend, desde la carpeta backend</span>
+cd backend
+./mvnw spring-boot:run       <span class="c"># en PowerShell: .\mvnw spring-boot:run</span></pre>
+      <p>Cuando veas <code>Started MitusaludApplication</code>:</p>
+      <ul>
+        <li>Swagger UI: <a href="http://localhost:8080/swagger-ui.html">http://localhost:8080/swagger-ui.html</a></li>
+        <li>Salud: <a href="http://localhost:8080/actuator/health">http://localhost:8080/actuator/health</a> → <code>{"status":"UP"}</code></li>
+      </ul>
+
+      <h3>Problemas típicos</h3>
+      <div class="table-wrap"><table>
+        <tr><th>Síntoma</th><th>Causa probable</th><th>Solución</th></tr>
+        <tr><td><code>Connection to localhost:5433 refused</code></td><td>El túnel no está abierto.</td><td>Abre la terminal del túnel.</td></tr>
+        <tr><td><code>password authentication failed</code></td><td>Los dos <code>.env</code> tienen contraseñas distintas.</td><td>Copia el mismo valor en ambos.</td></tr>
+        <tr><td><code>Could not resolve placeholder 'POSTGRES_PASSWORD'</code></td><td>No encuentra el <code>.env</code>: no existe o no arrancaste desde <code>backend/</code>.</td><td>Crea el <code>.env</code> en la raíz y arranca desde <code>backend/</code>.</td></tr>
+        <tr><td><code>Port 8080 was already in use</code></td><td>Otra copia de la app sigue abierta.</td><td>Ciérrala (Ctrl+C en su terminal).</td></tr>
+        <tr><td><code>Schema-validation: missing table</code></td><td>La entidad no coincide con las tablas.</td><td>Falta un script de Flyway o la entidad tiene un error.</td></tr>
+        <tr><td><code>bad interpreter</code> o <code>Permission denied</code> con <code>./mvnw</code></td><td>Saltos de línea de Windows o permiso de ejecución perdido.</td><td>Revisa <code>.gitattributes</code>; como arreglo rápido, <code>chmod +x mvnw</code>.</td></tr>
+      </table></div>
+    </section>
+
+    <!-- 10 -->
+    <section id="descartado">
+      <h2>10. Lo que no usamos y por qué</h2>
+      <p>Saber explicar por qué <em>no</em> usas algo demuestra tanto criterio como usarlo.</p>
+      <div class="table-wrap"><table>
+        <tr><th>Tecnología</th><th>Por qué no (por ahora)</th><th>Cuándo se revisaría</th></tr>
+        <tr><td>Redis</td><td>Caché y sesiones compartidas. Con una persona y un backend, PostgreSQL responde de sobra.</td><td>Si hubiera varias instancias del backend.</td></tr>
+        <tr><td>MinIO / S3</td><td>Aún no hay archivos (fotos, audios, PDF).</td><td>Fase G3. Se empezará con una carpeta en disco detrás de una interfaz.</td></tr>
+        <tr><td>RabbitMQ</td><td>Reparte trabajos entre programas, y solo hay uno.</td><td>Si el procesamiento con IA pasa a un programa aparte (fases G4/G5).</td></tr>
+        <tr><td>Kafka</td><td>Hecho para millones de eventos y muchos consumidores. Aquí hay decenas de registros al día.</td><td>No se prevé.</td></tr>
+        <tr><td>WebFlux (reactivo)</td><td>Código mucho más difícil de leer y depurar. Los virtual threads dan rendimiento parecido con código normal.</td><td>No se prevé.</td></tr>
+        <tr><td>Spring Cloud</td><td>Es para microservicios; esto es un monolito modular.</td><td>Solo si se extraen módulos a servicios.</td></tr>
+        <tr><td>Spring Batch</td><td>Procesos por lotes de millones de registros.</td><td>No se prevé.</td></tr>
+        <tr><td>GraalVM native</td><td>Complica el build para ganar solo tiempo de arranque.</td><td>No se prevé.</td></tr>
+        <tr><td>MapStruct y otros mapeadores</td><td>Para convertir un par de records basta un método de tres líneas, a la vista.</td><td>No se prevé.</td></tr>
+        <tr><td>Lombok</td><td>No ha hecho falta: los DTOs son records y la entidad tiene pocos getters. Generar código oculto dificulta entender qué hay.</td><td>Si las entidades crecen mucho.</td></tr>
+        <tr><td>Hexagonal completa en <code>diario</code></td><td>Para un CRUD obliga a triplicar clases y mapeos.</td><td>Se usará en <code>ingesta</code>, donde hay piezas intercambiables reales (proveedor de IA, almacenamiento).</td></tr>
+        <tr><td>Keycloak</td><td>Todavía no hay login.</td><td>Antes del primer dato real, comparándolo con Spring Security solo.</td></tr>
+      </table></div>
+    </section>
+
+    <!-- 11 -->
+    <section id="glosario">
+      <h2>11. Glosario</h2>
+      <dl class="glos">
+        <dt>API REST</dt><dd>Forma de comunicar programas por HTTP usando rutas (<code>/api/v1/pesos</code>) y métodos (<code>GET</code> para leer, <code>POST</code> para crear…).</dd>
+        <dt>Endpoint</dt><dd>Una ruta concreta de la API con su método, por ejemplo <code>POST /api/v1/pesos</code>.</dd>
+        <dt>JSON</dt><dd>Formato de texto para intercambiar datos: <code>{"kilos": 72.35}</code>.</dd>
+        <dt>Entidad</dt><dd>Clase Java que representa una fila de una tabla (<code>Peso</code>).</dd>
+        <dt>DTO</dt><dd><em>Data Transfer Object</em>: objeto que solo transporta datos entre la API y el código (<code>PesoEntrada</code>, <code>PesoSalida</code>).</dd>
+        <dt>Record</dt><dd>Clase de Java pensada para transportar datos: en una línea define campos, constructor, getters, <code>equals</code> y <code>toString</code>.</dd>
+        <dt>ORM / JPA / Hibernate</dt><dd>Un ORM traduce entre objetos Java y tablas. JPA es el estándar de Java para hacerlo; Hibernate es la implementación que usa Spring.</dd>
+        <dt>Spring Data</dt><dd>Genera los repositories a partir de interfaces y del nombre de sus métodos.</dd>
+        <dt>Transacción</dt><dd>Grupo de operaciones en la base de datos que se aplican todas o ninguna.</dd>
+        <dt>Migración</dt><dd>Script que cambia la estructura de la base de datos de forma controlada y versionada (Flyway).</dd>
+        <dt>CRUD</dt><dd><em>Create, Read, Update, Delete</em>: las cuatro operaciones básicas sobre datos.</dd>
+        <dt>Contenedor / Docker</dt><dd>Un contenedor empaqueta un programa con todo lo que necesita para funcionar igual en cualquier máquina. Docker es la herramienta que los ejecuta.</dd>
+        <dt>Volumen</dt><dd>Espacio de disco que Docker guarda fuera del contenedor, para que los datos sobrevivan aunque se borre.</dd>
+        <dt>Túnel SSH</dt><dd>Conexión cifrada que lleva el tráfico de un puerto de tu PC a un puerto del servidor.</dd>
+        <dt>Starter</dt><dd>Dependencia de Spring Boot que agrupa todo lo necesario para una tarea.</dd>
+        <dt>Monolito modular</dt><dd>Una sola aplicación dividida en módulos con fronteras claras, que podrían separarse en servicios más adelante.</dd>
+        <dt>Arquitectura hexagonal</dt><dd>Diseño en el que las reglas de negocio no dependen de la base de datos ni de la web: se conectan con ellas mediante interfaces ("puertos") y sus implementaciones ("adaptadores").</dd>
+        <dt>Virtual threads</dt><dd>Hilos ligeros de Java 21: permiten atender muchas peticiones a la vez con código normal.</dd>
+        <dt>ProblemDetail</dt><dd>Formato estándar (RFC 9457) para devolver errores de una API en JSON.</dd>
+        <dt>i18n</dt><dd>Internacionalización: preparar la app para varios idiomas sacando los textos del código.</dd>
+        <dt>LTS</dt><dd><em>Long Term Support</em>: versión con soporte y parches durante años. Java 21 lo es.</dd>
+        <dt>OpenAPI / Swagger UI</dt><dd>OpenAPI es el estándar para describir una API; Swagger UI es la página web que lee esa descripción y deja probar la API.</dd>
+        <dt>Healthcheck</dt><dd>Comprobación automática de si un servicio funciona (<code>/actuator/health</code>, el <code>healthcheck</code> de Docker).</dd>
+      </dl>
+    </section>
+
+  </div>
+  </main>
+</div>
+
+<script>
+  // Botón de tema: alterna claro/oscuro. La preferencia se recuerda solo en este navegador.
+  (function () {
+    var raiz = document.documentElement;
+    try {
+      var guardado = localStorage.getItem('guia-tema');
+      if (guardado) raiz.setAttribute('data-theme', guardado);
+    } catch (e) {}
+    document.getElementById('tema').addEventListener('click', function () {
+      var actual = raiz.getAttribute('data-theme') ||
+        (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      var nuevo = actual === 'dark' ? 'light' : 'dark';
+      raiz.setAttribute('data-theme', nuevo);
+      try { localStorage.setItem('guia-tema', nuevo); } catch (e) {}
+    });
+  })();
+</script>
+</body>
+</html>
