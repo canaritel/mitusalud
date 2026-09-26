@@ -1,0 +1,33 @@
+# Base de datos de mitusalud.
+# Se arranca en el servidor con: docker compose up -d
+# La contraseña se lee del archivo .env, que nunca se sube a GitHub.
+
+services:
+  postgres:
+    # Imagen oficial de PostgreSQL 17. Se usa la versión Debian en vez de Alpine
+    # porque ordena bien los textos en español (acentos, ñ) sin configuración extra.
+    image: postgres:17
+    container_name: mitusalud-postgres
+    # Si el servidor se reinicia, la base de datos arranca sola.
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mitusalud
+      POSTGRES_USER: mitusalud
+      # Si falta la contraseña en .env, Docker se niega a arrancar y avisa.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD en el archivo .env}
+    ports:
+      # Solo escucha en 127.0.0.1: no es accesible desde la red.
+      # Se llega por túnel SSH. El 5433 evita chocar con otro PostgreSQL en el 5432.
+      - "127.0.0.1:5433:5432"
+    volumes:
+      # Los datos viven en un volumen de Docker: sobreviven aunque se borre el contenedor.
+      - postgres-datos:/var/lib/postgresql/data
+    healthcheck:
+      # Docker comprueba cada 10 s que PostgreSQL acepta conexiones.
+      test: ["CMD-SHELL", "pg_isready -U mitusalud -d mitusalud"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-datos:
