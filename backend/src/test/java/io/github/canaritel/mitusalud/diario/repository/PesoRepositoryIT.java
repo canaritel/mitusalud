@@ -90,17 +90,21 @@ class PesoRepositoryIT {
     }
 
     @Test
-    void registrosDelMismoInstanteSalenSiempreEnElMismoOrden() {
-        // Con el mismo observadoEn desempata el id. No promete orden de inserción, solo que es estable.
-        pesoRepository.save(new Peso(MANANA_DIA_26, new BigDecimal("72.50")));
-        pesoRepository.save(new Peso(MANANA_DIA_26, new BigDecimal("72.60")));
+    void registrosDelMismoInstanteSeOrdenanPorIdDescendente() {
+        // Con el mismo observadoEn desempata el id: el mayor primero. No promete orden de inserción.
+        UUID a = pesoRepository.save(new Peso(MANANA_DIA_26, new BigDecimal("72.50"))).getId();
+        UUID b = pesoRepository.save(new Peso(MANANA_DIA_26, new BigDecimal("72.60"))).getId();
         pesoRepository.flush();
-
-        List<UUID> primera = pesoRepository.findAllByOrderByObservadoEnDescIdDesc().stream().map(Peso::getId).toList();
         entityManager.clear();
-        List<UUID> segunda = pesoRepository.findAllByOrderByObservadoEnDescIdDesc().stream().map(Peso::getId).toList();
 
-        assertThat(segunda).containsExactlyElementsOf(primera);
+        // PostgreSQL ordena los UUID byte a byte. Su texto (hexadecimal en minúsculas, longitud fija)
+        // se ordena igual, así que comparamos el texto. No se usa UUID.compareTo: compara números
+        // con signo y no garantiza el mismo orden que PostgreSQL.
+        List<UUID> esperado = a.toString().compareTo(b.toString()) > 0 ? List.of(a, b) : List.of(b, a);
+
+        List<UUID> lista = pesoRepository.findAllByOrderByObservadoEnDescIdDesc().stream().map(Peso::getId).toList();
+
+        assertThat(lista).containsExactlyElementsOf(esperado);
     }
 
     @Test

@@ -9,6 +9,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.math.BigDecimal;
+import java.sql.SQLException;
 import java.time.OffsetDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -43,7 +44,15 @@ class PesoTransaccionIT {
         // Se llama al service directamente, sin pasar por la validación del controller:
         // 600 kg llega a la base de datos y el CHECK de la tabla peso lo rechaza.
         PesoEntrada absurdo = new PesoEntrada(OffsetDateTime.parse("2026-09-26T08:30:00+02:00"), new BigDecimal("600"));
-        assertThatThrownBy(() -> pesoService.registrar(absurdo)).isInstanceOf(RuntimeException.class);
+        // No basta con "falla": tiene que fallar por el CHECK de los kilos en PostgreSQL. Si fallara antes
+        // por otro motivo (un NullPointerException, por ejemplo), no demostraría nada sobre el rollback.
+        // SQLState 23514 = violación de una restricción CHECK (código estándar de SQL).
+        assertThatThrownBy(() -> pesoService.registrar(absurdo))
+                .rootCause()
+                .isInstanceOfSatisfying(SQLException.class, causa -> {
+                    assertThat(causa.getSQLState()).isEqualTo("23514");
+                    assertThat(causa.getMessage()).contains("peso_kilos_check");
+                });
 
         // La transacción del service ya terminó (con rollback). Ni observation ni peso han cambiado.
         assertThat(contar("observation")).isEqualTo(observacionesAntes);
