@@ -7,6 +7,7 @@ Propuesta viva, iniciada el 26/09/2026. Donde este documento difiere de la docum
 - **No sobredimensionar.** Cada tecnología entra cuando existe una necesidad real, no por si acaso.
 - **Sencillo antes que fácil.** Se prefieren pocas piezas y poco acopladas, aunque otra opción parezca más rápida al principio.
 - **Comprensible para un junior.** El código lleva comentarios útiles que explican el porqué, no lo que ya dice el código.
+- **DTOs mínimos.** Sin clase de dominio separada fuera de `ingesta`. Los DTOs son `record` de una línea y solo existen si aportan algo: el de entrada impide que el cliente imponga campos como `id` u `ownerId`; el de salida desacopla la API de la tabla. Si coinciden, un solo record. Conversión con un método estático pequeño, sin librerías de mapeo.
 - **Paso a paso.** Se empieza por un esqueleto mínimo que funciona de punta a punta y crece con cada necesidad.
 
 ## Estado de cada pieza
