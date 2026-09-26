@@ -484,11 +484,24 @@ docker exec -it mitusalud-postgres psql -U mitusalud -c "ALTER USER mitusalud PA
     <!-- 8 -->
     <section id="tests">
       <h2>8. Tests</h2>
-      <p>Por ahora hay un test, <code>ModularidadTest</code>, y es de arquitectura:</p>
+      <p>Se ejecutan todos con <code>./mvnw verify</code>. Ninguno necesita base de datos ni túnel.</p>
+
+      <h3>Test de arquitectura: <code>ModularidadTest</code></h3>
 <pre>ApplicationModules.of(MitusaludApplication.class).verify();</pre>
-      <p>Spring Modulith analiza el código compilado y falla si un módulo usa clases internas de otro o si dos módulos dependen el uno del otro en círculo. No necesita base de datos, así que siempre se puede ejecutar. Se lanza con:</p>
-<pre>./mvnw verify</pre>
-      <p>Los tests de las capas (controller y repository) están propuestos para el siguiente paso.</p>
+      <p>Spring Modulith analiza el código compilado y falla si un módulo usa clases internas de otro o si dos módulos dependen el uno del otro en círculo. </p>
+
+      <h3>Tests de la capa web: <code>PesoControllerTest</code></h3>
+      <p>Usan <code>@WebMvcTest</code>, que arranca solo lo necesario para HTTP: controller, validación, conversión JSON y manejador de errores. El service se sustituye por un <em>mock</em> con <code>@MockitoBean</code>: un objeto falso al que se le dice qué devolver. Así se prueba el controller aislado, en segundos y sin base de datos. <code>MockMvc</code> simula las peticiones HTTP sin arrancar un servidor real.</p>
+      <div class="table-wrap"><table>
+        <tr><th>Test</th><th>Qué garantiza</th></tr>
+        <tr><td>Registrar un peso válido</td><td>Responde 201 con el registro.</td></tr>
+        <tr><td>Campos inválidos</td><td>Responde 400 con los campos que fallan y <strong>no llama al service</strong>.</td></tr>
+        <tr><td>Falta la fecha</td><td>El error señala el campo que falta y solo ese.</td></tr>
+        <tr><td>Errores en inglés / idioma no admitido</td><td>El idioma sigue a <code>Accept-Language</code>, con español por defecto.</td></tr>
+        <tr><td>JSON mal formado</td><td>Responde 400 con un mensaje claro.</td></tr>
+        <tr><td>Listar</td><td>Devuelve lo que da el service, en el mismo orden.</td></tr>
+      </table></div>
+      <div class="note"><strong>Un detalle para fijarse</strong><code>@WebMvcTest</code> no carga las clases <code>@Configuration</code> propias. Por eso el test importa <code>ConfiguracionIdioma</code> con <code>@Import</code>; sin ella, los idiomas no funcionarían en el test.</div>
     </section>
 
     <!-- 9 -->

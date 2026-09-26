@@ -35,7 +35,8 @@ Propuesta viva, iniciada el 26/09/2026. Donde este documento difiere de la docum
 | Spring Boot DevTools | Aprobada | Reinicio automático al guardar, solo en desarrollo. |
 | Actuator (solo `health`) | Aprobada | Estado de la aplicación y la base de datos para healthchecks. |
 | Virtual threads | Aprobada | Concurrencia de Java 21 activada con una propiedad, sin cambiar el código. |
-| Spring Security, RestClient, Spring AI, test slices | Propuesta | Se deciden al llegar a login, integraciones externas, G5 y pruebas. |
+| `@WebMvcTest` | Aprobada | Prueba la capa web (rutas, validación, errores, idiomas) sin base de datos, con el service simulado. |
+| Spring Security, RestClient, Spring AI | Propuesta | Se deciden al llegar a login, integraciones externas y G5. |
 | WebFlux, Spring Cloud, Spring Batch, GraalVM native | Descartadas | Complejidad sin necesidad: los virtual threads cubren la concurrencia y no hay microservicios ni procesos por lotes. |
 | ArchUnit | Propuesta | Reglas de arquitectura adicionales si Spring Modulith no basta. |
 
