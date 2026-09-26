@@ -90,6 +90,13 @@ Propuesta viva, iniciada el 26/09/2026. Donde este documento difiere de la docum
   Con el túnel abierto, la aplicación ve la base de datos en `localhost:5433`.
 - El `compose.yaml` llega al servidor clonando este repositorio. La contraseña va en un `.env` que solo existe en el servidor.
 
+## Piezas descartadas por ahora
+
+| Tecnología | Decisión | Cuándo revisarlo |
+|---|---|---|
+| Redis | No se usa. PostgreSQL responde de sobra y el límite de peticiones se resuelve dentro de Spring. | Solo si hay varias instancias del backend. |
+| MinIO u otro almacenamiento S3 | No se usa hasta G3. Guardar archivos será un puerto de `ingesta`; el primer adaptador es una carpeta en disco. | Al llegar a G3, revisando el estado de MinIO y alternativas como Garage o Hetzner Object Storage. |
+
 ## Mensajería: sin broker
 
 No se usa RabbitMQ, Kafka ni ningún otro broker. Con un único proceso y un único propietario, el volumen es de decenas de eventos al día.
