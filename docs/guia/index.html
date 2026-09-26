@@ -159,6 +159,7 @@
       <li><a href="#bd">Base de datos</a></li>
       <li><a href="#errores">Errores e idiomas</a></li>
       <li><a href="#tests">Tests</a></li>
+      <li><a href="#ci">Integración continua</a></li>
       <li><a href="#arrancar">Cómo arrancarlo</a></li>
       <li><a href="#descartado">Lo que no usamos</a></li>
       <li><a href="#glosario">Glosario</a></li>
@@ -172,7 +173,7 @@
       <button class="theme-toggle" type="button" id="tema" aria-label="Cambiar tema claro u oscuro">Tema</button>
       <h1>Guía de mitusalud</h1>
       <p>Qué hace cada pieza del proyecto y, sobre todo, por qué está así. Pensada para alguien que empieza.</p>
-      <div class="meta">Actualizada el 26/09/2026 · Estado: backend con registro de peso y tests</div>
+      <div class="meta">Actualizada el 26/09/2026 · Estado: backend con registro de peso, tests e integración continua</div>
     </header>
 
     <!-- 1 -->
@@ -547,8 +548,50 @@ docker exec -it mitusalud-postgres psql -U mitusalud -c "ALTER USER mitusalud PA
     </section>
 
     <!-- 9 -->
+    <section id="ci">
+      <h2>9. Integración continua (GitHub Actions)</h2>
+      <p>En cada push a <code>main</code> y en cada pull request, GitHub compila el backend y ejecuta <strong>todos</strong> los tests en una máquina limpia, incluidos los de base de datos. Si algo falla, el commit aparece con una ✗ roja y GitHub avisa por email. El resultado se ve en el badge del README.</p>
+
+      <h3>Qué se gana</h3>
+      <ul>
+        <li><strong>No depende de acordarse:</strong> los tests se ejecutan solos.</li>
+        <li><strong>Máquina limpia:</strong> detecta el "en mi máquina funciona", como un archivo sin subir, un permiso de <code>mvnw</code> o los saltos de línea.</li>
+        <li><strong>Sin túnel ni servidor:</strong> los tests de base de datos usan un PostgreSQL que GitHub crea y destruye en cada ejecución.</li>
+        <li><strong>Contribuciones probadas:</strong> en un repo público, los cambios que proponga otra persona se prueban antes de aceptarlos.</li>
+      </ul>
+
+      <h3>El archivo <code>.github/workflows/ci.yml</code></h3>
+      <p>GitHub busca los workflows en esa carpeta exacta. Las partes clave:</p>
+<pre>on:
+  push:
+    branches: [main]      <span class="c"># cuándo se ejecuta</span>
+  pull_request:
+
+permissions:
+  contents: read          <span class="c"># permisos mínimos: solo leer el código</span>
+
+services:
+  postgres:               <span class="c"># "service container": PostgreSQL desechable junto al job</span>
+    image: postgres:17
+    env:
+      POSTGRES_DB: mitusalud_test
+      POSTGRES_PASSWORD: ci   <span class="c"># desechable: la base solo existe durante la prueba</span>
+    ports:
+      - 5433:5432         <span class="c"># mismo puerto que el túnel en desarrollo</span>
+
+steps:
+  - uses: actions/checkout@v7       <span class="c"># descarga el código</span>
+  - uses: actions/setup-java@v6     <span class="c"># instala Java 21 y guarda la caché de Maven</span>
+  - run: ./mvnw -B verify -Pbd      <span class="c"># compila y pasa todos los tests</span></pre>
+      <p>El PostgreSQL de GitHub imita a propósito el entorno de desarrollo: se llama <code>mitusalud_test</code>, escucha en el puerto 5433 y usa el usuario <code>mitusalud</code>. Por eso los tests funcionan tal cual, sin cambiar código ni configuración. Como allí no existe <code>.env</code>, la contraseña llega como variable de entorno (<code>POSTGRES_PASSWORD</code>), que Spring lee igual. El guardia de la base de datos sigue protegiendo exactamente igual.</p>
+      <div class="note"><strong>¿Por qué no Testcontainers?</strong>Testcontainers arranca PostgreSQL desde el código de los tests y añade una dependencia al proyecto. GitHub Actions ya ofrece los <em>service containers</em> con unas líneas de configuración, así que en CI no hace falta. Testcontainers sigue como propuesta por si algún día hay Docker en el equipo de desarrollo.</div>
+      <div class="note"><strong>Idioma de la máquina</strong>Los servidores de GitHub están en inglés y tu PC quizá en español. Los tests esperan mensajes en español y pasan igual, porque el idioma lo decide la petición (<code>ConfiguracionIdioma</code>), no la máquina. Se comprobó antes de subir el workflow ejecutando los tests con la JVM en inglés.</div>
+      <p><code>-B</code> (<em>batch mode</em>) le dice a Maven que no hay nadie delante: sin colores ni barras de progreso, así los logs de GitHub son legibles.</p>
+    </section>
+
+    <!-- 10 -->
     <section id="arrancar">
-      <h2>9. Cómo arrancarlo</h2>
+      <h2>10. Cómo arrancarlo</h2>
 
       <h3>Qué necesitas</h3>
       <ul>
@@ -591,15 +634,16 @@ cd backend
         <tr><td><code>Could not resolve placeholder 'POSTGRES_PASSWORD'</code></td><td>No encuentra el <code>.env</code>: no existe o no arrancaste desde <code>backend/</code>.</td><td>Crea el <code>.env</code> en la raíz y arranca desde <code>backend/</code>.</td></tr>
         <tr><td><code>database "mitusalud_test" does not exist</code> con <code>-Pbd</code></td><td>Falta crear la base de test.</td><td>Ejecuta el <code>CREATE DATABASE</code> de esta sección en el servidor.</td></tr>
         <tr><td><code>Los tests solo pueden usar la base 'mitusalud_test', pero Flyway/JPA está conectado a…</code></td><td>El guardia detectó que una de las dos conexiones de los tests iba contra otra base de datos.</td><td>Revisa <code>bd-test.properties</code> y cualquier <code>spring.flyway.*</code>. No se ha tocado nada.</td></tr>
+        <tr><td>✗ roja en GitHub pero en tu PC pasa</td><td>Algo depende de tu máquina: un archivo sin subir, tu <code>.env</code>, tu idioma…</td><td>Abre la pestaña <em>Actions</em> del repo y lee el log del paso que falló.</td></tr>
         <tr><td><code>Port 8080 was already in use</code></td><td>Otra copia de la app sigue abierta.</td><td>Ciérrala (Ctrl+C en su terminal).</td></tr>
         <tr><td><code>Schema-validation: missing table</code></td><td>La entidad no coincide con las tablas.</td><td>Falta un script de Flyway o la entidad tiene un error.</td></tr>
         <tr><td><code>bad interpreter</code> o <code>Permission denied</code> con <code>./mvnw</code></td><td>Saltos de línea de Windows o permiso de ejecución perdido.</td><td>Revisa <code>.gitattributes</code>; como arreglo rápido, <code>chmod +x mvnw</code>.</td></tr>
       </table></div>
     </section>
 
-    <!-- 10 -->
+    <!-- 11 -->
     <section id="descartado">
-      <h2>10. Lo que no usamos y por qué</h2>
+      <h2>11. Lo que no usamos y por qué</h2>
       <p>Saber explicar por qué <em>no</em> usas algo demuestra tanto criterio como usarlo.</p>
       <div class="table-wrap"><table>
         <tr><th>Tecnología</th><th>Por qué no (por ahora)</th><th>Cuándo se revisaría</th></tr>
@@ -618,9 +662,9 @@ cd backend
       </table></div>
     </section>
 
-    <!-- 11 -->
+    <!-- 12 -->
     <section id="glosario">
-      <h2>11. Glosario</h2>
+      <h2>12. Glosario</h2>
       <dl class="glos">
         <dt>API REST</dt><dd>Forma de comunicar programas por HTTP usando rutas (<code>/api/v1/pesos</code>) y métodos (<code>GET</code> para leer, <code>POST</code> para crear…).</dd>
         <dt>Endpoint</dt><dd>Una ruta concreta de la API con su método, por ejemplo <code>POST /api/v1/pesos</code>.</dd>

@@ -1,0 +1,63 @@
+# Integración continua: en cada push a main y en cada pull request, GitHub compila el backend
+# y ejecuta TODOS los tests, incluidos los de base de datos, en una máquina limpia.
+# Si algo falla, el commit aparece con una ✗ roja en GitHub.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Permisos mínimos: el workflow solo necesita leer el código.
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (tests + base de datos)
+    runs-on: ubuntu-latest
+
+    # PostgreSQL desechable que GitHub arranca junto al job y destruye al terminar.
+    # Imita el entorno de desarrollo: base mitusalud_test en el puerto 5433, así los tests
+    # funcionan tal cual, sin cambiar código ni configuración.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: mitusalud_test
+          POSTGRES_USER: mitusalud
+          # Contraseña desechable: esta base solo existe durante la prueba. No es un secreto.
+          POSTGRES_PASSWORD: ci
+        ports:
+          - 5433:5432
+        # GitHub espera a que PostgreSQL acepte conexiones antes de seguir.
+        options: >-
+          --health-cmd "pg_isready -U mitusalud -d mitusalud_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    # Todos los comandos se ejecutan dentro de backend/.
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v7
+
+      - name: Instalar Java 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          # Guarda las dependencias de Maven entre ejecuciones: los siguientes builds van más rápido.
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      - name: Compilar y ejecutar todos los tests
+        # Sin .env en GitHub: Spring toma la contraseña de esta variable de entorno.
+        env:
+          POSTGRES_PASSWORD: ci
+        run: ./mvnw -B verify -Pbd

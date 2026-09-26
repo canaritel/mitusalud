@@ -1,5 +1,7 @@
 # mitusalud
 
+[![CI](https://github.com/canaritel/mitusalud/actions/workflows/ci.yml/badge.svg)](https://github.com/canaritel/mitusalud/actions/workflows/ci.yml)
+
 Nombre provisional del producto. No es una marca definitiva.
 
 Aplicación web personal para registrar y relacionar alimentación, sueño, actividad, gimnasio, medicación, suplementos, analíticas y contexto vital. Su finalidad es conservar un historial longitudinal útil y trazable para el propio usuario.

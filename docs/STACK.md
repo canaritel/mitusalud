@@ -75,7 +75,7 @@ Propuesta viva, iniciada el 26/09/2026. Donde este documento difiere de la docum
 |---|---|---|
 | JUnit 5 | Aprobada | Viene con Spring Boot. |
 | Tests de integración (`*IT`) contra PostgreSQL real | Aprobada | En desarrollo, base `mitusalud_test` en el servidor por el túnel, con `./mvnw verify -Pbd`. El `verify` normal no los ejecuta y no necesita túnel. La anotación `@UsaBaseDeDatosDeTest` impide que apunten a otra base: `@TestPropertySource` gana a las variables de entorno y un guardia comprueba la base antes de Flyway. |
-| Testcontainers | Propuesta | PostgreSQL desechable en GitHub Actions, que ya trae Docker. |
+| Testcontainers | Propuesta | PostgreSQL desechable en local si algún día hay Docker en el equipo de desarrollo. En GitHub Actions no hace falta: se usa un service container. |
 | Vitest + Testing Library | Propuesta | Pruebas de componentes React. |
 | Playwright | Propuesta | Pruebas de extremo a extremo en navegador. |
 
@@ -84,7 +84,7 @@ Propuesta viva, iniciada el 26/09/2026. Donde este documento difiere de la docum
 | Tecnología | Estado | Motivo |
 |---|---|---|
 | Docker + Docker Compose | Aprobada | Cualquiera levanta su instancia con `docker compose up`. |
-| GitHub Actions | Propuesta | Build y pruebas en cada cambio. |
+| GitHub Actions | Aprobada | En cada push y pull request compila y ejecuta todos los tests, incluidos los de base de datos contra un PostgreSQL desechable (service container). Gratis en repos públicos. |
 | Caddy | Propuesta | Proxy con HTTPS automático, al desplegar en el VPS. |
 | Restic + Backblaze B2 | Propuesta | Copias cifradas fuera del servidor, antes del primer dato real. |
 
