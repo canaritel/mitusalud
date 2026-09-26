@@ -45,8 +45,8 @@ Los cinco documentos de análisis enumerados en el README son la referencia can�
 | L-13 | Pruebas de acceso del propietario único | L-09, L-11 | **Revisada (pieza 3), pendiente de implementar.** Sustituye al perfil con dos propietarios: el propietario accede, otra identidad autenticada es rechazada y el acceso anónimo es rechazado. |
 | L-14 | `Observation` y restricciones | L-11 | Forma del valor, obligatoriedad por tipo, energía 1–5, `symptomKind`, `source` y procedencia quedan protegidos. |
 | L-15 | Idempotencia del camino directo | L-14 | **Revisada (pieza 4), pendiente de implementar.** Cabecera `Idempotency-Key` obligatoria y tabla `idempotency_record`, con el contrato y las 8 pruebas de la pieza 4 de [`MODELO_DATOS.md`](MODELO_DATOS.md). |
-| L-16 | `AuditEvent` en la misma transacción | L-14 | **Revisada (pieza 5), pendiente de implementar.** Cada operación de negocio que modifica datos, y cada exportación, deja su evento en la misma transacción, sin contenido; ver las reglas y pruebas de la pieza 5 de [`MODELO_DATOS.md`](MODELO_DATOS.md). |
-| L-17 | `ObservationRevision` y edición versionada | L-16 | Editar crea revisión, conserva la anterior y usa bloqueo optimista por versión. |
+| L-16 | `AuditEvent` en la misma transacción | L-14 | **Revisada (pieza 5), pendiente de implementar.** Cada operación de negocio que modifica datos deja su evento de auditoría en la misma transacción. Las exportaciones y otras acciones de seguridad tienen eventos específicos. Sin contenido; ver reglas y pruebas de la pieza 5 de [`MODELO_DATOS.md`](MODELO_DATOS.md). |
+| L-17 | `ObservationRevision` y edición versionada | L-16 | **Revisada (pieza 6), pendiente de implementar.** Editar guarda una foto JSON del estado anterior, en una sola transacción con el cambio y su evento; bloqueo optimista con `version` y 409. Ver reglas y pruebas de la pieza 6 de [`MODELO_DATOS.md`](MODELO_DATOS.md). |
 | L-18 | Generador de datos sintéticos | L-17 | Genera entre 12 y 18 meses correlacionados sin datos personales y permite demostrar la interfaz y la restauración. |
 
 ### D. Dominio

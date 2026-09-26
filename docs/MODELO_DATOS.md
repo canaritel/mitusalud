@@ -11,12 +11,12 @@ Por ahora es **solo documentación**: el código sigue con la tabla `peso` provi
 | # | Pieza | Estado |
 |---|---|---|
 | 1 | Organización de las tablas: `observation` común + una tabla de detalle por tipo | **Decidida** |
-| 1b | Mapeo Java: herencia `JOINED` o relación uno a uno | Pendiente: se decide al implementar, comparando ambas versiones sobre el peso |
+| 1b | Mapeo Java: herencia `JOINED` o relación uno a uno | Pendiente: se decide al implementar, comparando ambas versiones sobre el peso. Criterio añadido por la pieza 6: que `@Version` detecte ediciones que solo cambian el detalle |
 | 2 | Identificadores: UUID v7 | **Decidida** |
 | 3 | Sin `owner_id` en los datos; `OwnerAccount` como frontera de autorización | **Decidida**, pendiente de implementar con el login |
 | 4 | Idempotencia: cabecera `Idempotency-Key` y tabla `idempotency_record` | **Decidida**, pendiente de implementar |
 | 5 | `AuditEvent`: un evento por operación de negocio, sin contenido | **Decidida**, pendiente de implementar |
-| 6 | `ObservationRevision` (historial de ediciones) | Pendiente |
+| 6 | Historial de ediciones: foto del estado anterior en JSON | **Decidida**, pendiente de implementar con la edición |
 | 7 | Valor o rango, unidad original y normalizada | Pendiente |
 | 8 | Procedencia (`source`: directo, IA, importado) | Pendiente |
 | 9 | `observedAt` (fecha y hora) en lugar de solo fecha | Pendiente |
@@ -287,4 +287,54 @@ El threat model pide trazabilidad y borrado verificable. Un evento de borrado ac
 3. Borrar una observación deja su evento de borrado y los eventos anteriores siguen existiendo.
 4. El actor sale de la sesión del servidor, no de la petición.
 5. Ningún evento contiene valores de la observación.
+
+## Pieza 6: historial de ediciones (`observation_revision`)
+
+### Propósito
+
+En un historial de salud a largo plazo, corregir no debe borrar lo anterior. La auditoría (pieza 5) registra que hubo una edición, sin contenido; la revisión conserva **qué contenido había antes**.
+
+Se decide ahora y se implementa cuando exista la edición (L-17).
+
+### Decisión
+
+Cada edición guarda una **foto del estado anterior** (observación + detalle) en JSON. El estado actual vive en las tablas normales. Todas las versiones de una observación son sus revisiones en orden más el estado actual.
+
+| Opción | Motivo del descarte |
+|---|---|
+| `before` + `after` en cada revisión (diccionario) | Duplica: el `after` de una revisión es el `before` de la siguiente o el estado actual. |
+| Foto de todas las versiones, incluida la creación | Duplica el estado actual. |
+| Sin historial | Contradice la trazabilidad del proyecto. |
+| Tablas de revisión por tipo (`peso_revision`…) | Multiplica tablas y clases; el historial solo se consulta. |
+| Hibernate Envers | Mecanismo automático poco visible para un junior (mismo criterio que la pieza 5). |
+
+### Qué representa cada fila
+
+- La revisión *N* **conserva la versión *N***, sustituida al realizar la edición que produjo la versión *N+1*. Su fecha y su motivo describen esa edición.
+- `UNIQUE (observation_id, revision_number)` impide numeraciones duplicadas.
+- `snapshot_version` es otra cosa: identifica el **formato del JSON**. Cambiarlo obliga a seguir sabiendo leer los formatos anteriores; el número por sí solo no resuelve esa compatibilidad.
+- El JSON se construye con **records explícitos** (por ejemplo, una foto de peso versión 1), **nunca serializando la entidad JPA**: así un cambio en la entidad no altera en silencio el formato guardado.
+- Motivo opcional: texto libre escrito por el propietario.
+
+### Reglas
+
+1. **La edición completa es una sola transacción:** guardar la foto anterior, modificar observación y detalle, aumentar la versión y escribir el evento `EDITAR` (pieza 5). Si falla cualquier paso, se deshace todo, incluida la revisión.
+2. **El `type` no se edita** (pieza 1).
+3. **Borrar una observación borra sus revisiones** en cascada, motivos incluidos: contienen datos de salud y borrar es borrar el contenido (pieza 4). Solo sobrevive la auditoría, sin contenido.
+
+### Ediciones simultáneas (bloqueo optimista)
+
+- `observation` tiene una columna `version` con `@Version` de JPA.
+- El cliente envía la versión que vio en un campo `version` del JSON (visible y fácil de probar en Swagger). La alternativa estándar HTTP, `If-Match` con ETag y respuesta 412, queda descartada por ahora; cambiarla no afecta a las tablas.
+- **La versión recibida se compara, no se copia sobre la entidad:** el servidor lee la entidad, compara la versión recibida y, si no coincide, responde **409**. Si coincide, `@Version` detecta además los cambios concurrentes posteriores a esa lectura. Copiar la versión del cliente sobre la entidad anularía la protección.
+- **`@Version` debe cubrir también los cambios del detalle.** Con herencia `JOINED`, observación y detalle son la misma entidad y cambiar solo `kilos` debería aumentar la versión; con dos entidades uno a uno, no ocurre por sí solo y habría que forzarlo (`OPTIMISTIC_FORCE_INCREMENT`). Es un criterio de la decisión 1b y se verificará con una prueba, no se da por hecho.
+
+### Pruebas obligatorias al implementar
+
+1. Una edición guarda la foto anterior con el número correcto y el estado actual refleja el cambio.
+2. Rollback completo: si falla cualquier paso de la edición, no quedan revisión, cambio ni evento.
+3. Dos ediciones simultáneas que cambian **solo el detalle** (por ejemplo, los kilos): la segunda recibe 409.
+4. Una versión desactualizada enviada por el cliente recibe 409.
+5. Borrar la observación elimina sus revisiones; la auditoría permanece.
+6. Intentar cambiar el `type` se rechaza.
 
