@@ -484,7 +484,13 @@ docker exec -it mitusalud-postgres psql -U mitusalud -c "ALTER USER mitusalud PA
     <!-- 8 -->
     <section id="tests">
       <h2>8. Tests</h2>
-      <p>Se ejecutan todos con <code>./mvnw verify</code>. Ninguno necesita base de datos ni túnel.</p>
+      <p>Hay dos tipos de tests, y se ejecutan por separado:</p>
+      <div class="table-wrap"><table>
+        <tr><th>Comando</th><th>Qué ejecuta</th><th>Necesita</th></tr>
+        <tr><td><code>./mvnw verify</code></td><td>Tests normales (<code>*Test</code>): arquitectura y capa web.</td><td>Nada. Segundos.</td></tr>
+        <tr><td><code>./mvnw verify -Pbd</code></td><td>Lo anterior + tests de integración (<code>*IT</code>) contra PostgreSQL.</td><td>El túnel abierto.</td></tr>
+      </table></div>
+      <p>La separación la hace Maven por el nombre de la clase: el plugin <em>surefire</em> ejecuta las <code>*Test</code> siempre, y el plugin <em>failsafe</em> ejecuta las <code>*IT</code> solo con el perfil <code>bd</code> (definido en el <code>pom.xml</code>). Así el día a día no depende del túnel.</p>
 
       <h3>Test de arquitectura: <code>ModularidadTest</code></h3>
 <pre>ApplicationModules.of(MitusaludApplication.class).verify();</pre>
@@ -502,6 +508,20 @@ docker exec -it mitusalud-postgres psql -U mitusalud -c "ALTER USER mitusalud PA
         <tr><td>Listar</td><td>Devuelve lo que da el service, en el mismo orden.</td></tr>
       </table></div>
       <div class="note"><strong>Un detalle para fijarse</strong><code>@WebMvcTest</code> no carga las clases <code>@Configuration</code> propias. Por eso el test importa <code>ConfiguracionIdioma</code> con <code>@Import</code>; sin ella, los idiomas no funcionarían en el test.</div>
+
+      <h3>Tests de base de datos: <code>PesoRepositoryIT</code></h3>
+      <p>Usan <code>@DataJpaTest</code>, que arranca solo JPA, Flyway y los repositories, contra un <strong>PostgreSQL real</strong>: la base <code>mitusalud_test</code> del servidor, separada de la de desarrollo. La elige <code>src/test/resources/application-test.properties</code>, que se activa con <code>@ActiveProfiles("test")</code>.</p>
+      <ul>
+        <li>Por defecto <code>@DataJpaTest</code> cambiaría la base de datos por una en memoria. <code>@AutoConfigureTestDatabase(replace = NONE)</code> lo impide: una base de datos distinta podría dar por bueno algo que en PostgreSQL falla.</li>
+        <li>Cada test corre dentro de una transacción que se deshace al terminar: la base de test queda siempre vacía.</li>
+        <li>Al arrancar, Flyway aplica las migraciones y Hibernate valida la entidad contra la tabla. Si un script o una entidad tienen un error, fallan todos.</li>
+      </ul>
+      <div class="table-wrap"><table>
+        <tr><th>Test</th><th>Qué garantiza</th></tr>
+        <tr><td>Decimales exactos</td><td>72.35 se guarda y se lee como 72.35.</td></tr>
+        <tr><td>Orden de la lista</td><td>Del más reciente al más antiguo; el mismo día, el último registrado primero.</td></tr>
+        <tr><td>Peso absurdo</td><td>Aunque alguien se salte la validación Java, el <code>CHECK</code> de PostgreSQL lo rechaza. En el log aparece un aviso <code>violates check constraint</code>: es lo esperado.</td></tr>
+      </table></div>
     </section>
 
     <!-- 9 -->
@@ -520,7 +540,10 @@ cd mitusalud
 cp .env.example .env         <span class="c"># y pon una contraseña larga y aleatoria</span>
 chmod 600 .env               <span class="c"># solo tu usuario puede leerlo</span>
 docker compose up -d
-docker ps                    <span class="c"># mitusalud-postgres debe aparecer como "healthy"</span></pre>
+docker ps                    <span class="c"># mitusalud-postgres debe aparecer como "healthy"</span>
+
+<span class="c"># Base de datos para los tests de integración (solo en el servidor de desarrollo)</span>
+docker exec mitusalud-postgres psql -U mitusalud -c "CREATE DATABASE mitusalud_test"</pre>
       <p>Para actualizar más adelante: <code>git pull</code> y <code>docker compose up -d</code>.</p>
 
       <h3>Cada vez que programes, en tu PC</h3>
@@ -544,6 +567,7 @@ cd backend
         <tr><td><code>password authentication failed</code></td><td>Los dos <code>.env</code> tienen contraseñas distintas, o se cambiaron los <code>.env</code> sin cambiarla dentro de PostgreSQL.</td><td>Copia el mismo valor en ambos; si la cambiaste, sigue la <a href="#bd">sección 6</a>.</td></tr>
         <tr><td>Desde otro equipo o el móvil no llega a <code>:8080</code></td><td>Es intencionado: el backend solo escucha en <code>127.0.0.1</code>.</td><td>Úsalo desde el mismo PC. Se abrirá cuando haya login y despliegue.</td></tr>
         <tr><td><code>Could not resolve placeholder 'POSTGRES_PASSWORD'</code></td><td>No encuentra el <code>.env</code>: no existe o no arrancaste desde <code>backend/</code>.</td><td>Crea el <code>.env</code> en la raíz y arranca desde <code>backend/</code>.</td></tr>
+        <tr><td><code>database "mitusalud_test" does not exist</code> con <code>-Pbd</code></td><td>Falta crear la base de test.</td><td>Ejecuta el <code>CREATE DATABASE</code> de esta sección en el servidor.</td></tr>
         <tr><td><code>Port 8080 was already in use</code></td><td>Otra copia de la app sigue abierta.</td><td>Ciérrala (Ctrl+C en su terminal).</td></tr>
         <tr><td><code>Schema-validation: missing table</code></td><td>La entidad no coincide con las tablas.</td><td>Falta un script de Flyway o la entidad tiene un error.</td></tr>
         <tr><td><code>bad interpreter</code> o <code>Permission denied</code> con <code>./mvnw</code></td><td>Saltos de línea de Windows o permiso de ejecución perdido.</td><td>Revisa <code>.gitattributes</code>; como arreglo rápido, <code>chmod +x mvnw</code>.</td></tr>

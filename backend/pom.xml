@@ -72,6 +72,11 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
 			<groupId>org.springframework.modulith</groupId>
 			<artifactId>spring-modulith-starter-test</artifactId>
 			<scope>test</scope>
@@ -88,6 +93,25 @@
 			</dependency>
 		</dependencies>
 	</dependencyManagement>
+
+	<!--
+		Tests con base de datos (clases *IT): necesitan PostgreSQL y el túnel SSH abierto.
+		No se ejecutan con "./mvnw verify"; solo con "./mvnw verify -Pbd".
+		Los ejecuta el plugin failsafe, que Spring Boot ya deja configurado para las clases *IT.
+	-->
+	<profiles>
+		<profile>
+			<id>bd</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-failsafe-plugin</artifactId>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 
 	<build>
 		<plugins>

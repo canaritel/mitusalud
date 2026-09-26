@@ -74,7 +74,8 @@ Propuesta viva, iniciada el 26/09/2026. Donde este documento difiere de la docum
 | Tecnología | Estado | Motivo |
 |---|---|---|
 | JUnit 5 | Aprobada | Viene con Spring Boot. |
-| Testcontainers | Propuesta | PostgreSQL real en las pruebas de integración. |
+| Tests de integración (`*IT`) contra PostgreSQL real | Aprobada | En desarrollo, base `mitusalud_test` en el servidor por el túnel, con `./mvnw verify -Pbd`. El `verify` normal no los ejecuta y no necesita túnel. |
+| Testcontainers | Propuesta | PostgreSQL desechable en GitHub Actions, que ya trae Docker. |
 | Vitest + Testing Library | Propuesta | Pruebas de componentes React. |
 | Playwright | Propuesta | Pruebas de extremo a extremo en navegador. |
 
