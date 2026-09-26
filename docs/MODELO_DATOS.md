@@ -13,7 +13,7 @@ Por ahora es **solo documentación**: el código sigue con la tabla `peso` provi
 | 1 | Organización de las tablas: `observation` común + una tabla de detalle por tipo | **Decidida** |
 | 1b | Mapeo Java: herencia `JOINED` o relación uno a uno | Pendiente: se decide al implementar, comparando ambas versiones sobre el peso |
 | 2 | Identificadores: UUID v7 | **Decidida** |
-| 3 | `ownerId` en todas las tablas + `OwnerAccount` | Pendiente. Se diseñó para multiusuario; hoy cada instalación tiene un solo propietario |
+| 3 | Sin `owner_id` en los datos; `OwnerAccount` como frontera de autorización | **Decidida**, pendiente de implementar con el login |
 | 4 | `idempotencyKey` | Pendiente |
 | 5 | `AuditEvent` | Pendiente |
 | 6 | `ObservationRevision` (historial de ediciones) | Pendiente |
@@ -109,3 +109,46 @@ Referencia: RFC 9562, sección 5.7.
 ### Alternativa descartada
 
 `BIGINT` generado por PostgreSQL: más legible al depurar y más pequeño. Descartado porque cada tabla nueva encarece un cambio posterior y porque los identificadores dependerían de la instalación. Su legibilidad es el coste real de la decisión.
+
+## Pieza 3: sin `owner_id` en los datos; `OwnerAccount` como frontera de autorización
+
+### Contexto
+
+El diccionario pone `owner_id NOT NULL` en todas las tablas, claves foráneas compuestas `(owner_id, id)` y un `OwnerAccount` con una sola fila. Los documentos vinculan esta protección a un segundo propietario, a la compartición o al acceso de terceros: el diccionario exige RLS "antes del segundo propietario, compartición o acceso de terceros" y el threat model (T12) habla de "gate RLS antes de abrir".
+
+La decisión de producto es que **cada instalación pertenece a una sola persona**. Quien quiera usar mitusalud despliega su propia instancia; el multiusuario queda fuera del producto.
+
+### Decisión
+
+- Las tablas de datos **no** llevan `owner_id`: toda la instalación pertenece al propietario.
+- `OwnerAccount` se mantiene con una sola fila. No es solo un perfil (zona horaria, preferencias): **determina quién puede acceder a todos los datos de la instalación**.
+
+Quitar `owner_id` simplifica el modelo, pero **no elimina la autorización**: cambia dónde se aplica la protección, de cada tabla y cada consulta a una regla central de acceso.
+
+### Condiciones
+
+1. Solo el propietario configurado puede leer o escribir, en **todas** las rutas de datos. Estar autenticado no basta: cualquier otra identidad válida queda rechazada.
+2. `OwnerAccount` admite una sola fila. Mientras no esté configurada, el acceso a los datos está bloqueado.
+3. Con OIDC, la identidad del propietario se comprueba con **emisor e identificador (`iss` + `sub`)**, nunca solo con `sub` ni con el correo. El `sub` solo es único dentro de su emisor.
+4. Cambiar o recuperar la cuenta propietaria requiere un procedimiento explícito; nunca se reasigna automáticamente a quien consiga iniciar sesión.
+5. L-13 se sustituye por tres pruebas de acceso: propietario permitido, otra identidad autenticada rechazada y acceso anónimo rechazado. No hace falta guardar dos propietarios en la base.
+6. Se implementa con el login. Hasta entonces el backend solo escucha en `127.0.0.1` y solo hay datos inventados.
+
+### Fuera de esta decisión
+
+- **Compartir datos con terceros** (por ejemplo, un médico). B no lo impide, pero es una política de acceso distinta de "solo accede el propietario". Antes de habilitarlo habrá que definir qué datos puede leer el tercero, cómo se concede y se revoca el permiso y qué pruebas lo verifican.
+- **Multiusuario en una misma instalación.** Exigiría añadir `owner_id` a todas las tablas con una migración amplia. Está descartado por decisión de producto.
+
+### Adenda al threat model
+
+El threat model (documento canónico externo) sigue describiendo la protección por `owner_id`. Esta adenda indica cómo queda cada punto afectado; prevalece sobre él.
+
+| Amenaza | Mitigación original | Con esta decisión |
+|---|---|---|
+| T12. Autorización rota entre propietarios | `ownerId`, FKs compuestas, singleton y gate RLS | El riesgo pasa a ser que **otra identidad autenticada acceda**. Mitigación: comprobar `iss` + `sub` contra `OwnerAccount` en todas las rutas de datos, con las pruebas de la condición 5. |
+| T13. Registro público crea cuentas | Registro desactivado, alta administrativa | Sin cambios; gana peso junto a la comprobación de identidad. |
+| T21. Consulta olvida `ownerId` | Repositorios por propietario, pruebas cruzadas, RLS | No aplica. Su equivalente es "una ruta de datos sin comprobación de propietario". Mitigación: regla central que exige al propietario en todo `/api/**` y pruebas por ruta. |
+| T22. Detalle enlaza agregado de otro propietario | UNIQUE y FKs compuestas `(owner_id, id)` | No aplica: hay un solo propietario. |
+| T34. Ciphertext o DEK intercambiados entre registros | AAD con `ownerId + artifactId + objectId` | **Abierta.** Eliminar `owner_id` obliga a revisar en G3 el contexto que usa el cifrado. No se fija todavía la solución. |
+| Verificación: el segundo `OwnerAccount` falla | Prueba del singleton | Se mantiene. |
+

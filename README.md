@@ -38,7 +38,7 @@ La documentación de análisis aprobada se mantiene fuera de este repositorio:
 - `Wireframes_diario_personal_v9.docx`
 - `Threat_model_diario_personal_2026.docx`
 
-Si este repositorio contradice esos documentos, mandan los documentos canónicos, salvo en las decisiones tecnológicas recogidas en [`docs/STACK.md`](docs/STACK.md), que son posteriores.
+Si este repositorio contradice esos documentos, mandan los documentos canónicos, salvo en las decisiones recogidas en [`docs/STACK.md`](docs/STACK.md) (tecnología) y [`docs/MODELO_DATOS.md`](docs/MODELO_DATOS.md) (modelo de datos, incluida su adenda al threat model), que son posteriores.
 
 ## Ejecución
 

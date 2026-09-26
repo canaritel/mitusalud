@@ -11,6 +11,7 @@ Los cinco documentos de análisis enumerados en el README son la referencia can�
 - La rama local solo utiliza datos sintéticos.
 - Ningún dato personal real entra antes de completar L-29 y S-12.
 - El P0 manual puede construirse antes del proveedor de IA. Voz, fotos, PDF y la pantalla Confirmar esperan sus gates.
+- Las tablas de datos no llevan `ownerId` ni FKs compuestas con propietario: cada instalación tiene un solo propietario y `OwnerAccount` es la frontera de autorización. Las menciones a `ownerId` en las tareas se leen conforme a la pieza 3 de [`MODELO_DATOS.md`](MODELO_DATOS.md).
 - `ContextPeriod` y `ObservationTag` son conceptos distintos: el primero es un periodo temporal; el segundo etiqueta una observación concreta.
 
 ## Rama local
@@ -32,7 +33,7 @@ Los cinco documentos de análisis enumerados en el README son la referencia can�
 | ID | Tarea | Depende | Criterio de aceptación |
 |---|---|---|---|
 | L-08 | Keycloak con realm propio | L-03 | Registro público desactivado y comprobado automáticamente. |
-| L-09 | Authorization Code + PKCE; aplicación como Resource Server | L-08 | Sin token, las rutas de datos responden 401. El `sub` resuelve el propietario y el cliente no puede imponer `ownerId`. |
+| L-09 | Authorization Code + PKCE; aplicación como Resource Server | L-08 | **Revisada (pieza 3), pendiente de implementar.** Sin token, las rutas de datos responden 401. Solo la identidad `iss` + `sub` registrada en `OwnerAccount` accede; cualquier otra identidad autenticada es rechazada en todas las rutas de datos. |
 | L-10 | MFA en la cuenta propietaria | L-08 | Segundo factor exigible y códigos de respaldo fuera del sistema. |
 
 ### C. Núcleo del diario
@@ -41,7 +42,7 @@ Los cinco documentos de análisis enumerados en el README son la referencia can�
 |---|---|---|---|
 | L-11 | `OwnerAccount`, singleton y readiness guard | L-04, L-09 | Índice único sobre constante. Tras migrar, la aplicación exige exactamente un propietario y remite al ADR de RLS si hay cero o más de uno. |
 | L-12 | Prueba: rechazo del segundo propietario | L-11 | La prueba de integración intenta insertar un segundo `owner_account` y debe fallar. |
-| L-13 | Perfil con dos propietarios sintéticos | L-12 | Perfil de prueba separado que retira el singleton; ninguna consulta cruza propietarios. |
+| L-13 | Pruebas de acceso del propietario único | L-09, L-11 | **Revisada (pieza 3), pendiente de implementar.** Sustituye al perfil con dos propietarios: el propietario accede, otra identidad autenticada es rechazada y el acceso anónimo es rechazado. |
 | L-14 | `Observation` y restricciones | L-11 | Forma del valor, obligatoriedad por tipo, energía 1–5, `symptomKind`, `source` y procedencia quedan protegidos. |
 | L-15 | Idempotencia del camino directo | L-14 | `idempotencyKey` obligatoria y única por propietario; enviar dos veces crea una sola fila. |
 | L-16 | `AuditEvent` en la misma transacción | L-14 | Una prueba demuestra que no existe `Observation` sin su auditoría. |
