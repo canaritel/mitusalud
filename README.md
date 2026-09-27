@@ -23,7 +23,7 @@ Aplicación web personal para registrar y relacionar alimentación, sueño, acti
 
 - Análisis funcional, técnico, de datos y amenazas: cerrado.
 - Backlog ejecutable: v3, 41 tareas.
-- Código de producto: backend (Spring Boot + PostgreSQL) que registra y lista pesos, agua y energía con el modelo definitivo (`observation` + detalle). Ver [`docs/MODELO_DATOS.md`](docs/MODELO_DATOS.md).
+- Código de producto: backend (Spring Boot + PostgreSQL) que registra y lista pesos, agua y energía con el modelo definitivo (`observation` + detalle), y una pantalla local de consulta (prototipo en `frontend/`). Ver [`docs/MODELO_DATOS.md`](docs/MODELO_DATOS.md).
 - Entorno de desarrollo: PostgreSQL en un servidor Linux local, solo con datos inventados.
 - Infraestructura contratada: ninguna.
 - Primer dato real: prohibido hasta completar L-29 y S-12.

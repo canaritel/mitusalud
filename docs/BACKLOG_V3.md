@@ -122,5 +122,6 @@ Hasta entonces solo se permiten datos sintéticos.
 - L-01: completada. Repositorio, README, límites y licencia AGPL-3.0 establecidos.
 - L-02 a L-29: pendientes.
 - Peso, agua y energía con el modelo definitivo (`observation` + detalle por tipo, UUID v7, `observed_at`): registrar y listar. Cumple parcialmente L-07, L-14 y L-20; idempotencia (L-15), auditoría (L-16) y revisiones (L-17) siguen pendientes como condiciones futuras de [`MODELO_DATOS.md`](MODELO_DATOS.md).
+- Prototipo local de consulta en `frontend/` (React + Vite): lista peso, agua y energía. No cumple L-27 ni L-28.
 - S-01 y S-10: bloqueadas por gasto.
 - Resto de tareas de servidor: pendientes de sus dependencias.

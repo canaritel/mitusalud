@@ -173,21 +173,23 @@
       <button class="theme-toggle" type="button" id="tema" aria-label="Cambiar tema claro u oscuro">Tema</button>
       <h1>Guía de mitusalud</h1>
       <p>Qué hace cada pieza del proyecto y, sobre todo, por qué está así. Pensada para alguien que empieza.</p>
-      <div class="meta">Actualizada el 27/09/2026 · Estado: peso, agua y energía con el modelo definitivo (observation + detalle), tests e integración continua</div>
+      <div class="meta">Actualizada el 27/09/2026 · Estado: peso, agua y energía con el modelo definitivo (observation + detalle), tests, integración continua y una pantalla de consulta (prototipo)</div>
     </header>
 
     <!-- 1 -->
     <section id="que-es">
       <h2>1. Qué es mitusalud y cómo encaja todo</h2>
       <p>mitusalud es un diario personal de salud: alimentación, sueño, actividad, gimnasio, medicación, analíticas… Cada persona lo instala en su propio servidor y guarda allí sus datos. No es un servicio compartido: cada instalación tiene un único propietario.</p>
-      <p>Hoy existe la primera pieza que funciona de punta a punta: <strong>registrar tu peso y verlo en una lista</strong>. Todo lo demás crecerá sobre ese esqueleto.</p>
+      <p>Hoy existe la primera pieza que funciona de punta a punta: <strong>registrar peso, agua y energía por la API y verlos en una pantalla</strong>. Todo lo demás crecerá sobre ese esqueleto.</p>
       <div class="note"><strong>Construido poco a poco, a propósito</strong>El peso ya usa el modelo definitivo: una tabla común <code>observation</code> para cualquier registro y una tabla de detalle <code>peso</code> (<a href="#bd">sección 6</a>). Otras piezas (login, evitar duplicados, auditoría, historial de ediciones…) están identificadas pero se construirán cuando aparezca la función que las necesite, para no diseñar de más. Las decisiones y sus motivos están en <code>docs/MODELO_DATOS.md</code>.</div>
 
       <h3>Las piezas y por dónde viajan los datos</h3>
       <div class="zone">
         <div class="label">Tu PC</div>
         <div class="flow">
-          <div class="box"><b>Navegador / Swagger UI</b><small>Tú pruebas la API</small></div>
+          <div class="box"><b>Navegador</b><small>Pantalla o Swagger UI</small></div>
+          <div class="arrow" aria-hidden="true">→</div>
+          <div class="box"><b>Frontend Vite</b><small>127.0.0.1:5173, reenvía /api</small></div>
           <div class="arrow" aria-hidden="true">→</div>
           <div class="box hl"><b>Backend Spring Boot</b><small>localhost:8080</small></div>
           <div class="arrow" aria-hidden="true">→</div>
@@ -235,7 +237,8 @@
 │   ├── STACK.md      <span class="c">tecnologías y por qué</span>
 │   ├── BACKLOG_V3.md <span class="c">lista de tareas del proyecto</span>
 │   └── guia/         <span class="c">esta guía</span>
-└── backend/          <span class="c">la aplicación Spring Boot (sección 4)</span></pre>
+├── backend/          <span class="c">la aplicación Spring Boot (sección 4)</span>
+└── frontend/         <span class="c">pantalla de consulta, prototipo (sección 5)</span></pre>
 
       <div class="table-wrap"><table>
         <tr><th>Archivo</th><th>Para qué sirve y por qué</th></tr>
@@ -395,6 +398,15 @@ public record PesoSalida(UUID id, Instant observadoEn, BigDecimal kilos) {
         <li><code>spring.jpa.open-in-view=false</code>: por defecto Spring mantiene abierta la conexión a la base de datos mientras genera la respuesta, lo que permite consultas "escondidas" fuera del service. Se desactiva para que todo acceso a datos ocurra en el service, a la vista.</li>
         <li><code>spring.jpa.hibernate.ddl-auto=validate</code>: Hibernate no crea ni cambia tablas; solo comprueba que las entidades coinciden con ellas. Las tablas son cosa de Flyway.</li>
       </ul>
+
+      <h3>La pantalla de consulta (frontend, prototipo)</h3>
+      <p>En <code>frontend/</code> hay una pantalla React + TypeScript, creada con Vite, que muestra las listas de peso, agua y energía. Es un <strong>prototipo local de solo consulta</strong>: no es la PWA (L-27) ni la pantalla Hoy (L-28), y los formularios llegarán con la idempotencia (pieza 4 del modelo).</p>
+      <ul>
+        <li><strong>Proxy de Vite.</strong> El navegador solo habla con Vite (<code>127.0.0.1:5173</code>), que reenvía <code>/api</code> al backend. Así el backend no necesita CORS. Los dos escuchan solo en <code>127.0.0.1</code> (<code>vite.config.ts</code>).</li>
+        <li><strong><code>src/api.ts</code></strong>: los tipos de las respuestas, escritos a mano, y un hook <code>useGet</code> que usan los tres apartados. Comprueba <code>response.ok</code>, porque <code>fetch</code> no falla con un 404, e ignora respuestas que llegan cuando el componente ya no está.</li>
+        <li><strong><code>src/App.tsx</code></strong>: los tres apartados, cada uno con sus mensajes de carga, lista vacía y error. Si falla uno, los otros se siguen viendo. La hora se muestra en la zona horaria del navegador; <code>'es-ES'</code> solo decide el formato.</li>
+      </ul>
+      <p>Sin tests automáticos por ahora: <code>npm run build</code> compila y comprueba los tipos, y el resto se comprobó a mano en el navegador.</p>
     </section>
 
     <!-- 6 -->
@@ -774,7 +786,7 @@ gh run rerun &lt;id&gt;                <span class="c"># relanza una ejecución<
 
       <h3>Qué necesitas</h3>
       <ul>
-        <li><strong>En tu PC:</strong> Java 21, Git y un cliente SSH (Windows ya lo trae). Maven no: lo trae el wrapper.</li>
+        <li><strong>En tu PC:</strong> Java 21, Git y un cliente SSH (Windows ya lo trae). Maven no: lo trae el wrapper. Para la pantalla, Node.js con npm.</li>
         <li><strong>En el servidor:</strong> Linux con Docker y Docker Compose, y acceso por SSH con clave.</li>
       </ul>
 
@@ -803,6 +815,10 @@ cd backend
         <li>Swagger UI: <a href="http://localhost:8080/swagger-ui.html">http://localhost:8080/swagger-ui.html</a></li>
         <li>Salud: <a href="http://localhost:8080/actuator/health">http://localhost:8080/actuator/health</a> → <code>{"status":"UP"}</code></li>
       </ul>
+      <p>Para ver la pantalla, una tercera terminal:</p>
+<pre>cd frontend
+npm install                  <span class="c"># solo la primera vez o si cambia package.json</span>
+npm run dev                  <span class="c"># y abre http://127.0.0.1:5173</span></pre>
 
       <h3>Problemas típicos</h3>
       <div class="table-wrap"><table>
