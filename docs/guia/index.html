@@ -173,7 +173,7 @@
       <button class="theme-toggle" type="button" id="tema" aria-label="Cambiar tema claro u oscuro">Tema</button>
       <h1>Guía de mitusalud</h1>
       <p>Qué hace cada pieza del proyecto y, sobre todo, por qué está así. Pensada para alguien que empieza.</p>
-      <div class="meta">Actualizada el 27/09/2026 · Estado: peso, agua y energía con el modelo definitivo (observation + detalle), tests, integración continua y una pantalla de consulta (prototipo)</div>
+      <div class="meta">Actualizada el 27/09/2026 · Estado: peso, agua y energía con el modelo definitivo (observation + detalle), tests, integración continua, una pantalla de consulta (prototipo) y acceso con passkeys en el backend</div>
     </header>
 
     <!-- 1 -->
@@ -326,7 +326,11 @@
 
       <h3>Módulos y capas</h3>
 <pre>io/github/canaritel/mitusalud/
-├── MitusaludApplication.java   <span class="c">arranque</span>
+├── MitusaludApplication.java   <span class="c">arranque (y modo comando: "acceso primero|recuperar")</span>
+├── acceso/                     <span class="c">módulo: quién entra (passkeys, enlace, sesiones)</span>
+│   ├── ConfiguracionSeguridad.java, FiltroPasskeys.java  <span class="c">reglas de acceso</span>
+│   ├── CuentaPropietario.java, SesionDeAlta.java         <span class="c">el propietario y la sesión de alta</span>
+│   └── ComandoAcceso.java, ...                           <span class="c">el comando del servidor</span>
 ├── comun/                      <span class="c">módulo: lo que sirve a toda la API</span>
 │   ├── ConfiguracionIdioma.java
 │   └── ManejadorErroresApi.java
@@ -410,12 +414,21 @@ public record PesoSalida(UUID id, Instant observadoEn, BigDecimal kilos) {
       <h3>La pantalla (frontend, prototipo)</h3>
       <p>En <code>frontend/</code> hay una pantalla React + TypeScript, creada con Vite, que muestra las listas de peso, agua y energía y permite registrar agua. Es un <strong>prototipo local</strong>: no es la PWA (L-27) ni la pantalla Hoy (L-28).</p>
       <ul>
-        <li><strong>Proxy de Vite.</strong> El navegador solo habla con Vite (<code>127.0.0.1:5173</code>), que reenvía <code>/api</code> al backend. Así el backend no necesita CORS. Los dos escuchan solo en <code>127.0.0.1</code> (<code>vite.config.ts</code>).</li>
+        <li><strong>Proxy de Vite.</strong> El navegador solo habla con Vite, que reenvía al backend <code>/api</code> y las rutas de acceso (<code>/login</code>, <code>/logout</code>, <code>/webauthn</code>). Así el backend no necesita CORS y la cookie de sesión es del mismo origen. Los dos escuchan solo en <code>127.0.0.1</code>, pero la pantalla se abre en <code>http://localhost:5173</code>: WebAuthn no admite IPs. <code>changeOrigin: false</code> conserva la cabecera <code>Host</code>, para que las redirecciones del backend vuelvan a la pantalla (<code>vite.config.ts</code>).</li>
         <li><strong><code>src/api.ts</code></strong>: los tipos de las respuestas, escritos a mano, y un hook <code>useGet</code> que usan los tres apartados. Comprueba <code>response.ok</code>, porque <code>fetch</code> no falla con un 404, e ignora respuestas que llegan cuando el componente ya no está.</li>
         <li><strong><code>src/App.tsx</code></strong>: los tres apartados, cada uno con sus mensajes de carga, lista vacía y error. Si falla uno, los otros se siguen viendo. La hora se muestra en la zona horaria del navegador; <code>'es-ES'</code> solo decide el formato.</li>
         <li><strong><code>src/RegistroAgua.tsx</code></strong>: "+250 ml" y "Añadir" crean siempre una operación nueva, con clave nueva (<code>crypto.randomUUID()</code>) y la hora fijada en ese momento. Si no llega respuesta (sin conexión, 10 s sin contestar o un error 5xx), queda "sin confirmar" y <strong>Reintentar</strong> la reenvía con la misma clave y los mismos datos. Un 400 o un 422 queda "rechazado": reenviar lo mismo no serviría. Si el POST se confirma pero falla la recarga de la lista, el error sale en la lista, no en la operación. Las operaciones sin confirmar viven solo en memoria: al recargar la página ya no se pueden reintentar desde aquí, aunque el servidor pudiera haberlas guardado.</li>
       </ul>
       <p>Sin tests automáticos por ahora: <code>npm run build</code> compila y comprueba los tipos. El registro se probó manejando Chrome con su protocolo de depuración, que permite simular una respuesta perdida (el servidor guarda y el navegador recibe un corte), un fallo al recargar la lista, un 422 y un servidor que no contesta.</p>
+
+      <h3>Quién entra: passkeys y enlace de un solo uso (paso A)</h3>
+      <p>Toda la API exige una <strong>sesión abierta con passkey del propietario</strong> (<code>acceso/</code>; decisión en <code>STACK.md</code>, "Identidad"). Hay un solo usuario y ningún registro público:</p>
+      <ol>
+        <li><strong>Primera vez:</strong> en la máquina del backend, <code>acceso primero</code> imprime un enlace de un solo uso, válido 10 minutos. El enlace abre una <code>SesionDeAlta</code>: solo sirve para registrar una passkey, sin acceso al diario, y caduca a los 10 minutos aunque se use. Al registrar la passkey se cierra. Emitir un enlace nuevo cierra todas las sesiones, incluidas las de alta de enlaces anteriores, y una sesión de alta solo puede registrar mientras el propietario no tenga ninguna passkey.</li>
+        <li><strong>Entrar:</strong> con la passkey (huella, cara o PIN; <code>userVerification = required</code>). La sesión se guarda en PostgreSQL y caduca tras 8 horas sin uso. Con la sesión abierta se puede añadir otra passkey. Eliminar una lo hace <code>CuentaPropietario.eliminarPasskey</code> en una sola transacción: bloquea la fila del propietario (<code>FOR UPDATE</code>, así dos eliminaciones simultáneas van de una en una), comprueba que no es la última, la borra y cierra todas las sesiones. Si algo falla, no se borra nada.</li>
+        <li><strong>Recuperar:</strong> <code>acceso recuperar</code> revoca todas las passkeys, cierra todas las sesiones, invalida los enlaces anteriores y da uno nuevo. El propietario sigue siendo el mismo.</li>
+      </ol>
+      <p>Las peticiones que modifican datos llevan el token CSRF: llega en la cookie <code>XSRF-TOKEN</code> y vuelve en la cabecera <code>X-XSRF-TOKEN</code>. Mientras llega el paso B, las pantallas de entrar y de passkeys son las estándar de Spring (<code>/login</code>, <code>/login/ott</code>, <code>/webauthn/register</code>). La pantalla React lee con la sesión, pero todavía no envía el token CSRF, así que "+250 ml" responde 403.</p>
     </section>
 
     <!-- 6 -->
@@ -456,7 +469,9 @@ V2__peso_como_observacion.sql     <span class="c">← el modelo definitivo del p
 V3__agua.sql                      <span class="c">← segundo tipo de registro</span>
 V4__energia.sql                   <span class="c">← tercer tipo de registro</span>
 V5__clave_idempotencia.sql        <span class="c">← clave de idempotencia (sección 5)</span>
-V6__...sql                        <span class="c">← el siguiente cambio</span></pre>
+V6__acceso_del_propietario.sql    <span class="c">← passkeys, enlaces, sesiones y owner_account</span>
+V7__...sql                        <span class="c">← el siguiente cambio</span></pre>
+      <p>V6 copia los esquemas oficiales de Spring Security (passkeys y tokens de un solo uso) y de Spring Session (sesiones) para PostgreSQL, en vez de dejar que Spring cree tablas por su cuenta. Añade <code>owner_account</code>, con un índice único sobre una constante: una segunda fila choca con la primera.</p>
       <p>Al arrancar, Flyway mira la tabla <code>flyway_schema_history</code> (la crea él) para saber qué scripts ya aplicó, y ejecuta solo los nuevos, en orden. Así cualquier instalación, hoy o dentro de un año, acaba con las mismas tablas.</p>
       <div class="warn"><strong>Regla de oro</strong>Nunca se modifica un script ya aplicado: Flyway guarda su huella y se negaría a arrancar. Cualquier cambio va en un script nuevo. Por eso V1 sigue existiendo aunque su tabla ya no: V2 la borra y crea las nuevas. Los datos de V1 eran inventados y se descartaron en vez de migrarse.<br><br>Vale también para la base de test y para un simple comentario: retocar V4 cuando ya estaba aplicada en <code>mitusalud_test</code> paró los tests con <code>Migration checksum mismatch</code>.</div>
 
@@ -702,6 +717,17 @@ docker exec -it mitusalud-postgres psql -U mitusalud -c "ALTER USER mitusalud PA
       </table></div>
       <div class="warn"><strong>La trampa de la caché de primer nivel</strong>Hibernate guarda en memoria las entidades que ya conoce dentro de una transacción. Si guardas un objeto y justo después lo buscas por id, Hibernate te devuelve <em>el mismo objeto de memoria</em> sin preguntar a la base de datos, y el test pasaría aunque PostgreSQL hubiera guardado otra cosa. Por eso el test de decimales llama a <code>entityManager.clear()</code> antes de leer: obliga a hacer un <code>SELECT</code> real. Esta trampa la detectó una revisión mirando el log de SQL: el test solo hacía un <code>INSERT</code>.</div>
 
+      <h3>Acceso: <code>AccesoIT</code> y <code>CsrfIT</code></h3>
+      <p><code>AccesoIT</code> (22 tests, sin <code>@Transactional</code>; cada test empieza sin propietario, passkeys, enlaces ni sesiones) prueba lo que puede romper la seguridad:</p>
+      <ul>
+        <li><strong>Datos:</strong> sin sesión, 401; el propietario con passkey, 200; otra identidad con passkey, 403; sin token CSRF, 403.</li>
+        <li><strong>Enlace:</strong> abre una sesión de alta que no lee ni escribe datos; sirve una sola vez; caducado no sirve; uno nuevo invalida el anterior; la web no genera enlaces (<code>/ott/generate</code>).</li>
+        <li><strong>Passkeys:</strong> las opciones exigen <code>userVerification = required</code> al registrar y al entrar; una sesión de alta caducada no puede registrar; un enlace nuevo cierra la sesión de alta del anterior; una sesión de alta no añade passkeys si ya hay una.</li>
+        <li><strong>Recuperación y eliminación:</strong> recuperar revoca passkeys, cierra sesiones e invalida enlaces sin cambiar de propietario; no se puede eliminar la última passkey; eliminar una cierra todas las sesiones. Dos eliminaciones simultáneas no dejan al propietario sin passkeys: el test bloquea a mano la fila del propietario, comprueba en <code>pg_stat_activity</code> que las dos esperan y, al soltarla, una elimina y la otra ve que ya es la última. Si falla el cierre de sesiones (un <em>trigger</em> provocado en PostgreSQL), la passkey no se borra. Solo puede haber un propietario (L-12).</li>
+      </ul>
+      <p>Los demás tests de la API entran como el propietario con <code>ComoPropietario</code>, y los de controller se ejecutan sin los filtros de seguridad. <code>CsrfIT</code> arranca un servidor de verdad (<code>RANDOM_PORT</code>) y usa el cliente HTTP de Java, porque <code>with(csrf())</code> cambia el almacén de tokens del contexto de pruebas compartido. Comprueba que el token de la cookie solo vale si vuelve en la cabecera.</p>
+      <p>Se vio fallar: con once reglas rotas a propósito (entre ellas sesión de alta tratada como propietario, enlaces anteriores válidos, verificación opcional, eliminar sin bloqueo o sin transacción y sesiones de alta que sobreviven a un enlace nuevo), fallaron exactamente sus tests. En el navegador, con autenticadores virtuales de Chrome, se recorrieron los tres casos completos. Una passkey sin huella ni PIN no entra. <strong>Falta probarlo con un dispositivo real.</strong></p>
+
       <h3>Idempotencia del agua: <code>AguaIdempotenciaIT</code></h3>
       <p>Sin <code>@Transactional</code>: los reintentos y la concurrencia solo se prueban con transacciones que se confirman de verdad, así que cada test borra al final lo que ha creado.</p>
       <div class="table-wrap"><table>
@@ -840,7 +866,13 @@ cd backend
       <p>Para ver la pantalla, una tercera terminal:</p>
 <pre>cd frontend
 npm install                  <span class="c"># solo la primera vez o si cambia package.json</span>
-npm run dev                  <span class="c"># y abre http://127.0.0.1:5173</span></pre>
+npm run dev                  <span class="c"># y abre http://localhost:5173 (no 127.0.0.1: las passkeys no admiten IPs)</span></pre>
+      <p><strong>La primera vez, crea tu acceso</strong> desde la carpeta <code>backend</code>, con el backend en marcha o no:</p>
+<pre>./mvnw spring-boot:run -Dspring-boot.run.arguments="acceso primero"
+<span class="c"># imprime un token válido 10 minutos: pégalo en http://localhost:5173/login/ott,
+# registra la passkey y entra en http://localhost:5173/login</span></pre>
+      <p>Si pierdes todas tus passkeys: lo mismo con <code>acceso recuperar</code>.</p>
+      <div class="note"><strong>El comando y DevTools</strong>En desarrollo, ejecutar el comando <code>acceso</code> mediante Maven puede provocar un reinicio del backend por DevTools si se actualizan archivos compilados. Puede interrumpir peticiones en curso. Las sesiones guardadas en PostgreSQL sobreviven al reinicio, salvo que el propio comando las invalide: emitir un enlace nuevo cierra todas las sesiones a propósito.</div>
 
       <h3>Problemas típicos</h3>
       <div class="table-wrap"><table>
@@ -878,7 +910,7 @@ npm run dev                  <span class="c"># y abre http://127.0.0.1:5173</spa
         <tr><td>Hexagonal completa en <code>diario</code></td><td>Para un CRUD obliga a triplicar clases y mapeos.</td><td>Se usará en <code>ingesta</code>, donde hay piezas intercambiables reales (proveedor de IA, almacenamiento).</td></tr>
         <tr><td>Thymeleaf (páginas HTML generadas por Spring)</td><td>Alternativa razonable, con menos piezas, para una aplicación de formularios siempre conectada. Se eligió React por la interfaz interactiva en el móvil y por la posible captura sin conexión (G2), que encaja mejor con una aplicación que ya funciona en el navegador.</td><td>Si la captura sin conexión dejara de interesar y se quisiera reducir tecnologías.</td></tr>
         <tr><td>Vaadin Flow</td><td>Permite escribir la interfaz en Java. Su gran ventaja, no escribir endpoints REST, pesa menos porque la API ya existe, y añade otro framework con su propio funcionamiento entre navegador y servidor.</td><td>No se prevé.</td></tr>
-        <tr><td>Keycloak</td><td>Un servicio de identidad aparte que cada instalación tendría que actualizar, proteger y copiar. Para un solo propietario se eligió Spring Security con sesión y passkeys (aún sin implementar).</td><td>Si llegara una aplicación nativa o integraciones de terceros que necesiten tokens.</td></tr>
+        <tr><td>Keycloak</td><td>Un servicio de identidad aparte que cada instalación tendría que actualizar, proteger y copiar. Para un solo propietario se eligió Spring Security con sesión y passkeys (sección 5).</td><td>Si llegara una aplicación nativa o integraciones de terceros que necesiten tokens.</td></tr>
       </table></div>
     </section>
 

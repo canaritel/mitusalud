@@ -2,6 +2,8 @@ package io.github.canaritel.mitusalud.diario;
 
 import com.jayway.jsonpath.JsonPath;
 import io.github.canaritel.mitusalud.UsaBaseDeDatosDeTest;
+import io.github.canaritel.mitusalud.acceso.CuentaPropietario;
+import org.springframework.security.web.webauthn.management.PublicKeyCredentialUserEntityRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -12,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+import static io.github.canaritel.mitusalud.ComoPropietario.propietario;
 import static org.hamcrest.Matchers.contains;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -33,9 +36,16 @@ class AguaApiIT {
     @Autowired
     private MockMvc mockMvc;
 
+    // Para entrar como el propietario con su passkey (ver ComoPropietario).
+    @Autowired
+    private CuentaPropietario cuenta;
+
+    @Autowired
+    private PublicKeyCredentialUserEntityRepository usuarios;
+
     @Test
     void aguaRegistradaPorLaApiApareceEnSuListaYNoEnLaDePesos() throws Exception {
-        String respuesta = mockMvc.perform(post("/api/v1/agua")
+        String respuesta = mockMvc.perform(post("/api/v1/agua").with(propietario(cuenta, usuarios))
                         .header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -46,12 +56,12 @@ class AguaApiIT {
                 .andReturn().getResponse().getContentAsString();
         String id = JsonPath.read(respuesta, "$.id");
 
-        mockMvc.perform(get("/api/v1/agua"))
+        mockMvc.perform(get("/api/v1/agua").with(propietario(cuenta, usuarios)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.id == '%s')].mililitros", id).value(contains(330)));
 
         // El mismo id no aparece en la lista de pesos.
-        mockMvc.perform(get("/api/v1/pesos"))
+        mockMvc.perform(get("/api/v1/pesos").with(propietario(cuenta, usuarios)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.id == '%s')]", id).isEmpty());
     }

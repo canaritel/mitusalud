@@ -53,7 +53,7 @@ Propuesta viva, iniciada el 26/09/2026. Donde este documento difiere de la docum
 
 | Tecnología | Estado | Motivo |
 |---|---|---|
-| Spring Security con sesión y passkeys | Aprobada (27/09/2026) | Una instalación, un propietario: sin servicio de identidad aparte. Sesión con cookie (`HttpOnly`, `Secure`, `SameSite`, con caducidad) y protección CSRF; passkeys con `userVerification = required`, comprobado en el servidor. El alta y la recuperación usan un token de corta duración y de un solo uso, generado solo con acceso administrativo al servidor. El alta y la recuperación son código propio: se mantienen mínimos y con pruebas. |
+| Spring Security con sesión y passkeys | Aprobada (27/09/2026); backend implementado | Una instalación, un propietario: sin servicio de identidad aparte. Sesión guardada en PostgreSQL (Spring Session JDBC) con cookie (`HttpOnly`, `Secure`, `SameSite`, con caducidad) y protección CSRF; passkeys con `userVerification = required`, comprobado en el servidor. El alta y la recuperación usan un token de corta duración y de un solo uso, generado solo con acceso administrativo al servidor. El alta y la recuperación son código propio: se mantienen mínimos y con pruebas. |
 | Keycloak (OIDC + PKCE) | Descartada por ahora | Un servicio más que instalar, actualizar, proteger y copiar en cada instancia, para funciones que un solo propietario no necesita. Se revisaría con una aplicación nativa o integraciones de terceros que necesiten tokens. |
 
 ## Frontend

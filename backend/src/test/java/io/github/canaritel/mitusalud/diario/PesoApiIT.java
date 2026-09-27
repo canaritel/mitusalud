@@ -2,6 +2,8 @@ package io.github.canaritel.mitusalud.diario;
 
 import com.jayway.jsonpath.JsonPath;
 import io.github.canaritel.mitusalud.UsaBaseDeDatosDeTest;
+import io.github.canaritel.mitusalud.acceso.CuentaPropietario;
+import org.springframework.security.web.webauthn.management.PublicKeyCredentialUserEntityRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -10,6 +12,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import static io.github.canaritel.mitusalud.ComoPropietario.propietario;
 import static org.hamcrest.Matchers.contains;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -36,10 +39,17 @@ class PesoApiIT {
     @Autowired
     private MockMvc mockMvc;
 
+    // Para entrar como el propietario con su passkey (ver ComoPropietario).
+    @Autowired
+    private CuentaPropietario cuenta;
+
+    @Autowired
+    private PublicKeyCredentialUserEntityRepository usuarios;
+
     @Test
     void unPesoRegistradoPorLaApiApareceEnLaListaConSusDatos() throws Exception {
         // Enviado con zona +02:00; la API devuelve el mismo instante en UTC.
-        String respuesta = mockMvc.perform(post("/api/v1/pesos")
+        String respuesta = mockMvc.perform(post("/api/v1/pesos").with(propietario(cuenta, usuarios))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"observadoEn": "2026-09-26T08:30:00+02:00", "kilos": 71.80}
@@ -54,7 +64,7 @@ class PesoApiIT {
 
         // "$[?(@.id == '...')]" es un filtro de JsonPath: los elementos de la lista con ese id.
         // contains(...) exige que haya exactamente uno y con ese valor.
-        mockMvc.perform(get("/api/v1/pesos"))
+        mockMvc.perform(get("/api/v1/pesos").with(propietario(cuenta, usuarios)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.id == '%s')].observadoEn", id).value(contains("2026-09-26T06:30:00Z")))
                 .andExpect(jsonPath("$[?(@.id == '%s')].kilos", id).value(contains(71.8)));

@@ -7,6 +7,7 @@ import io.github.canaritel.mitusalud.diario.service.AguaService;
 import io.github.canaritel.mitusalud.diario.service.ClaveIdempotenciaReutilizadaException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
@@ -30,6 +31,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Tests de la capa web del agua (sin base de datos; el service es un mock).
  */
 @WebMvcTest(AguaController.class)
+// Sin los filtros de seguridad: aquí se prueban validación y errores; la seguridad, en acceso/AccesoIT.
+@AutoConfigureMockMvc(addFilters = false)
 @Import(ConfiguracionIdioma.class)
 class AguaControllerTest {
 

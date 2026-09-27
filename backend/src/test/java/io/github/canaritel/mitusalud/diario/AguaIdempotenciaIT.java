@@ -2,6 +2,8 @@ package io.github.canaritel.mitusalud.diario;
 
 import com.jayway.jsonpath.JsonPath;
 import io.github.canaritel.mitusalud.UsaBaseDeDatosDeTest;
+import io.github.canaritel.mitusalud.acceso.CuentaPropietario;
+import org.springframework.security.web.webauthn.management.PublicKeyCredentialUserEntityRepository;
 import io.github.canaritel.mitusalud.diario.dto.AguaEntrada;
 import io.github.canaritel.mitusalud.diario.service.AguaService;
 import org.junit.jupiter.api.AfterEach;
@@ -26,6 +28,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import static io.github.canaritel.mitusalud.ComoPropietario.propietario;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.fail;
@@ -48,6 +51,13 @@ class AguaIdempotenciaIT {
 
     @Autowired
     private MockMvc mockMvc;
+
+    // Para entrar como el propietario con su passkey (ver ComoPropietario).
+    @Autowired
+    private CuentaPropietario cuenta;
+
+    @Autowired
+    private PublicKeyCredentialUserEntityRepository usuarios;
 
     @Autowired
     private AguaService aguaService;
@@ -171,7 +181,7 @@ class AguaIdempotenciaIT {
     }
 
     private ResultActions registrar(UUID claveIdempotencia, String observadoEn, int mililitros) throws Exception {
-        return mockMvc.perform(post("/api/v1/agua")
+        return mockMvc.perform(post("/api/v1/agua").with(propietario(cuenta, usuarios))
                 .header("Idempotency-Key", claveIdempotencia.toString())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""

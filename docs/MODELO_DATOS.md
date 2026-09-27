@@ -18,6 +18,7 @@ Peso (V2), agua (V3) y energía (V4) siguen estas decisiones.
 | 1 | Tablas: `observation` común + una tabla de detalle por tipo, con FK compuesta `(observation_id, type)` |
 | 1b | Mapeo Java: **una sola implementación**, herencia `JOINED`. Validado: guarda ambas filas y Hibernate no envía `peso.type`. La comprobación de `@Version` sobre cambios solo del detalle se hará con la edición (pieza 6); las tablas son iguales con uno a uno, así que un cambio de mapeo no requeriría migración |
 | 2 | Identificadores UUID v7 generados con Hibernate; cronología por `observed_at` con `id` de desempate |
+| 3 | Sin `owner_id` en los datos; `OwnerAccount` (V6) con el identificador interno de las passkeys como frontera de autorización. Pruebas de acceso en `AccesoIT`. Implementado en el backend; las pantallas propias llegan después |
 | 4 (mínima) | Creación de agua idempotente: cabecera `Idempotency-Key` (UUID) obligatoria y columna `observation.idempotency_key` con `UNIQUE` (V5). Ver "Versión mínima implementada" en la pieza 4 |
 | 7 | Solo unidades canónicas (`kilos` con 2 decimales, `mililitros` enteros, `nivel` entero de 1 a 5), sin redondeos silenciosos |
 | 7b | Texto libre (nota de la energía): opcional y en la tabla de detalle de su tipo; hasta 500 unidades UTF-16 en la API y 500 caracteres en PostgreSQL; en blanco se guarda como `NULL`; el carácter nulo y las mitades sueltas de emoji se rechazan con 400, sin cambios silenciosos |
@@ -28,7 +29,6 @@ Peso (V2), agua (V3) y energía (V4) siguen estas decisiones.
 | # | Condición | Cuándo se revisa |
 |---|---|---|
 | 1b | Lógica común a todos los tipos (editar con revisión, borrar con auditoría, idempotencia) en un solo sitio. Hasta entonces, clases concretas por tipo y sin genéricos: se repite estructura, no lógica | Con la primera lógica que necesiten todos los tipos |
-| 3 | Sin `owner_id` en los datos; `OwnerAccount` como frontera de autorización (el usuario al que pertenecen las passkeys), con pruebas de acceso | Con el login |
 | 4 | Idempotencia completa: conservar la clave y la petición original cuando el registro cambie (tabla propia, huella, 410), 409 por espera y componente común | **Antes de permitir cualquier edición o borrado de agua**, también por importación o mantenimiento; el componente común, con el formulario del segundo tipo |
 | 5 | Auditoría de operaciones, sin contenido | Con la primera operación que deba auditarse (borrar, exportar…) |
 | 6 | Historial de ediciones: foto del estado anterior | Con la edición |
@@ -150,7 +150,7 @@ Quitar `owner_id` simplifica el modelo, pero **no elimina la autorización**: ca
 3. La identidad del propietario es el **usuario de Spring Security al que pertenecen sus passkeys**, guardado por su identificador interno (el *user handle* de WebAuthn), nunca por el nombre visible ni el correo. Se eligió Spring Security con sesión y passkeys en lugar de OIDC con Keycloak el 27/09/2026 (ver [`STACK.md`](STACK.md)); con OIDC habría sido emisor más identificador (`iss` + `sub`).
 4. Cambiar o recuperar la cuenta propietaria requiere un procedimiento explícito; nunca se reasigna automáticamente a quien consiga iniciar sesión. La recuperación usa un token de corta duración y de un solo uso, generado solo con acceso administrativo al servidor, que permite registrar una passkey nueva. Recuperar el acceso no invalida lo perdido: la passkey del dispositivo perdido se revoca y se cierran todas las sesiones del propietario (L-10).
 5. L-13 se sustituye por tres pruebas de acceso: propietario permitido, otra identidad autenticada rechazada y acceso anónimo rechazado. No hace falta guardar dos propietarios en la base.
-6. Se implementa con el login. Hasta entonces el backend solo escucha en `127.0.0.1` y solo hay datos inventados.
+6. Implementado en el backend el 27/09/2026 (Spring Security con passkeys; ver `STACK.md`). El backend sigue escuchando solo en `127.0.0.1` y solo hay datos inventados.
 
 ### Fuera de esta decisión
 

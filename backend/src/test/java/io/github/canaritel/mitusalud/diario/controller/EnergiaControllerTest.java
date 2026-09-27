@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
@@ -33,6 +34,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Cómo se guarda la nota (por ejemplo, una nota en blanco) se prueba en EnergiaRepositoryIT.
  */
 @WebMvcTest(EnergiaController.class)
+// Sin los filtros de seguridad: aquí se prueban validación y errores; la seguridad, en acceso/AccesoIT.
+@AutoConfigureMockMvc(addFilters = false)
 @Import(ConfiguracionIdioma.class)
 class EnergiaControllerTest {
 

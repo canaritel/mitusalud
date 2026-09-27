@@ -6,6 +6,7 @@ import io.github.canaritel.mitusalud.diario.dto.PesoSalida;
 import io.github.canaritel.mitusalud.diario.service.PesoService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
@@ -35,6 +36,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * El service se sustituye por un "mock" (@MockitoBean): un objeto falso al que le decimos qué devolver.
  */
 @WebMvcTest(PesoController.class)
+// Sin los filtros de seguridad: aquí se prueban validación y errores; la seguridad, en acceso/AccesoIT.
+@AutoConfigureMockMvc(addFilters = false)
 @Import(ConfiguracionIdioma.class) // @WebMvcTest no carga las clases @Configuration propias; esta hace falta para los idiomas.
 class PesoControllerTest {
 
