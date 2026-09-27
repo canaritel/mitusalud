@@ -36,7 +36,8 @@ Propuesta viva, iniciada el 26/09/2026. Donde este documento difiere de la docum
 | Actuator (solo `health`) | Aprobada | Estado de la aplicación y la base de datos para healthchecks. |
 | Virtual threads | Aprobada | Concurrencia de Java 21 activada con una propiedad, sin cambiar el código. |
 | `@WebMvcTest` | Aprobada | Prueba la capa web (rutas, validación, errores, idiomas) sin base de datos, con el service simulado. |
-| Spring Security, RestClient, Spring AI | Propuesta | Se deciden al llegar a login, integraciones externas y G5. |
+| Spring Security, RestClient | Propuesta | Se deciden al llegar a login e integraciones externas. |
+| Spring AI | Propuesta, candidata preferente para G5 | Ver "IA: por etapas". |
 | WebFlux, Spring Cloud, Spring Batch, GraalVM native | Descartadas | Complejidad sin necesidad: los virtual threads cubren la concurrencia y no hay microservicios ni procesos por lotes. |
 | ArchUnit | Propuesta | Reglas de arquitectura adicionales si Spring Modulith no basta. |
 
@@ -126,6 +127,23 @@ Criterio para revisarlo:
 - **Streaming (Kafka o similar):** no se prevé. Resuelve volúmenes altos, muchos consumidores y reprocesado del histórico, ninguno de los cuales existe en una instancia personal.
 
 Añadir un broker obliga a cada persona que despliegue su instancia a operarlo, respaldarlo y reservarle memoria, así que solo entra con un consumidor real.
+
+## IA: por etapas (G5)
+
+Spring AI es la candidata preferente. La versión estable y su compatibilidad con el backend se verificarán al integrarla.
+
+- **Primera función:** texto → propuesta estructurada → validación → confirmación del usuario → guardado. Ejemplo: "hoy a las diez bebí 330 ml". Si falta un dato ("un vaso"), se pregunta en lugar de inventarlo.
+- **La confirmación reutiliza los servicios de creación del diario y su idempotencia**, conservando la procedencia IA aunque el usuario confirme (pieza 8 de [`MODELO_DATOS.md`](MODELO_DATOS.md)). El contrato HTTP se decidirá al implementar G5.
+- **Los cálculos exactos no pasan por el modelo:** totales, medias y consultas por fecha se hacen en PostgreSQL y Java.
+- **Opcional en cada instalación**, desactivada por defecto: sin configurarla, la aplicación funciona igual. Qué datos salen del servidor (proveedor externo o modelo local) se decide en G5; con un modelo local, los datos solo se quedan en el servidor si el modelo se ejecuta allí y sin conexiones externas.
+- **Cada proveedor o modelo pasa los mismos ejemplos de evaluación**, sintéticos: cambiar de proveedor no es solo configuración, porque difieren en precisión y capacidades.
+- **Prompts y respuestas fuera de los logs**, con una prueba como la de L-07.
+- **Detrás de una interfaz pequeña de `ingesta`**, para que el diario no dependa del proveedor.
+
+Criterio para ampliar:
+
+- **RAG y almacén vectorial (pgvector):** solo con una colección de documentos y una pregunta concreta que la búsqueda normal resuelva mal. Su coste incluye indexar, conservar referencias y borrar fragmentos y vectores al borrar el original.
+- **Memoria de conversación y agentes:** no se prevén.
 
 ## Diferencias con la documentación de análisis
 
