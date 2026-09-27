@@ -28,7 +28,7 @@ Peso (V2), agua (V3) y energía (V4) siguen estas decisiones.
 | # | Condición | Cuándo se revisa |
 |---|---|---|
 | 1b | Lógica común a todos los tipos (editar con revisión, borrar con auditoría, idempotencia) en un solo sitio. Hasta entonces, clases concretas por tipo y sin genéricos: se repite estructura, no lógica | Con la primera lógica que necesiten todos los tipos |
-| 3 | Sin `owner_id` en los datos; `OwnerAccount` como frontera de autorización (`iss` + `sub`), con pruebas de acceso | Con el login |
+| 3 | Sin `owner_id` en los datos; `OwnerAccount` como frontera de autorización (el usuario al que pertenecen las passkeys), con pruebas de acceso | Con el login |
 | 4 | Idempotencia completa: conservar la clave y la petición original cuando el registro cambie (tabla propia, huella, 410), 409 por espera y componente común | **Antes de permitir cualquier edición o borrado de agua**, también por importación o mantenimiento; el componente común, con el formulario del segundo tipo |
 | 5 | Auditoría de operaciones, sin contenido | Con la primera operación que deba auditarse (borrar, exportar…) |
 | 6 | Historial de ediciones: foto del estado anterior | Con la edición |
@@ -147,8 +147,8 @@ Quitar `owner_id` simplifica el modelo, pero **no elimina la autorización**: ca
 
 1. Solo el propietario configurado puede leer o escribir, en **todas** las rutas de datos. Estar autenticado no basta: cualquier otra identidad válida queda rechazada.
 2. `OwnerAccount` admite una sola fila. Mientras no esté configurada, el acceso a los datos está bloqueado.
-3. Con OIDC, la identidad del propietario se comprueba con **emisor e identificador (`iss` + `sub`)**, nunca solo con `sub` ni con el correo. El `sub` solo es único dentro de su emisor.
-4. Cambiar o recuperar la cuenta propietaria requiere un procedimiento explícito; nunca se reasigna automáticamente a quien consiga iniciar sesión.
+3. La identidad del propietario es el **usuario de Spring Security al que pertenecen sus passkeys**, guardado por su identificador interno (el *user handle* de WebAuthn), nunca por el nombre visible ni el correo. Se eligió Spring Security con sesión y passkeys en lugar de OIDC con Keycloak el 27/09/2026 (ver [`STACK.md`](STACK.md)); con OIDC habría sido emisor más identificador (`iss` + `sub`).
+4. Cambiar o recuperar la cuenta propietaria requiere un procedimiento explícito; nunca se reasigna automáticamente a quien consiga iniciar sesión. La recuperación usa un token de corta duración y de un solo uso, generado solo con acceso administrativo al servidor, que permite registrar una passkey nueva. Recuperar el acceso no invalida lo perdido: la passkey del dispositivo perdido se revoca y se cierran todas las sesiones del propietario (L-10).
 5. L-13 se sustituye por tres pruebas de acceso: propietario permitido, otra identidad autenticada rechazada y acceso anónimo rechazado. No hace falta guardar dos propietarios en la base.
 6. Se implementa con el login. Hasta entonces el backend solo escucha en `127.0.0.1` y solo hay datos inventados.
 
@@ -163,8 +163,8 @@ El threat model (documento canónico externo) sigue describiendo la protección 
 
 | Amenaza | Mitigación original | Con esta decisión |
 |---|---|---|
-| T12. Autorización rota entre propietarios | `ownerId`, FKs compuestas, singleton y gate RLS | El riesgo pasa a ser que **otra identidad autenticada acceda**. Mitigación: comprobar `iss` + `sub` contra `OwnerAccount` en todas las rutas de datos, con las pruebas de la condición 5. |
-| T13. Registro público crea cuentas | Registro desactivado, alta administrativa | Sin cambios; gana peso junto a la comprobación de identidad. |
+| T12. Autorización rota entre propietarios | `ownerId`, FKs compuestas, singleton y gate RLS | El riesgo pasa a ser que **otra identidad autenticada acceda**. Mitigación: comprobar que la sesión pertenece al usuario de `OwnerAccount` en todas las rutas de datos, con las pruebas de la condición 5. |
+| T13. Registro público crea cuentas | Registro desactivado, alta administrativa | No existe registro público de cuentas: la primera passkey solo se registra con un token generado con acceso administrativo al servidor (L-08). |
 | T21. Consulta olvida `ownerId` | Repositorios por propietario, pruebas cruzadas, RLS | No aplica. Su equivalente es "una ruta de datos sin comprobación de propietario". Mitigación: regla central que exige al propietario en todo `/api/**` y pruebas por ruta. |
 | T22. Detalle enlaza agregado de otro propietario | UNIQUE y FKs compuestas `(owner_id, id)` | No aplica: hay un solo propietario. |
 | T34. Ciphertext o DEK intercambiados entre registros | AAD con `ownerId + artifactId + objectId` | **Abierta.** Eliminar `owner_id` obliga a revisar en G3 el contexto que usa el cifrado. No se fija todavía la solución. |

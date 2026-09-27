@@ -878,7 +878,7 @@ npm run dev                  <span class="c"># y abre http://127.0.0.1:5173</spa
         <tr><td>Hexagonal completa en <code>diario</code></td><td>Para un CRUD obliga a triplicar clases y mapeos.</td><td>Se usará en <code>ingesta</code>, donde hay piezas intercambiables reales (proveedor de IA, almacenamiento).</td></tr>
         <tr><td>Thymeleaf (páginas HTML generadas por Spring)</td><td>Alternativa razonable, con menos piezas, para una aplicación de formularios siempre conectada. Se eligió React por la interfaz interactiva en el móvil y por la posible captura sin conexión (G2), que encaja mejor con una aplicación que ya funciona en el navegador.</td><td>Si la captura sin conexión dejara de interesar y se quisiera reducir tecnologías.</td></tr>
         <tr><td>Vaadin Flow</td><td>Permite escribir la interfaz en Java. Su gran ventaja, no escribir endpoints REST, pesa menos porque la API ya existe, y añade otro framework con su propio funcionamiento entre navegador y servidor.</td><td>No se prevé.</td></tr>
-        <tr><td>Keycloak</td><td>Todavía no hay login.</td><td>Antes del primer dato real, comparándolo con Spring Security solo.</td></tr>
+        <tr><td>Keycloak</td><td>Un servicio de identidad aparte que cada instalación tendría que actualizar, proteger y copiar. Para un solo propietario se eligió Spring Security con sesión y passkeys (aún sin implementar).</td><td>Si llegara una aplicación nativa o integraciones de terceros que necesiten tokens.</td></tr>
       </table></div>
     </section>
 

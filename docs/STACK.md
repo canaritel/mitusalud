@@ -36,7 +36,7 @@ Propuesta viva, iniciada el 26/09/2026. Donde este documento difiere de la docum
 | Actuator (solo `health`) | Aprobada | Estado de la aplicación y la base de datos para healthchecks. |
 | Virtual threads | Aprobada | Concurrencia de Java 21 activada con una propiedad, sin cambiar el código. |
 | `@WebMvcTest` | Aprobada | Prueba la capa web (rutas, validación, errores, idiomas) sin base de datos, con el service simulado. |
-| Spring Security, RestClient | Propuesta | Se deciden al llegar a login e integraciones externas. |
+| RestClient | Propuesta | Se decide al llegar a integraciones externas. Spring Security: ver "Identidad". |
 | Spring AI | Propuesta, candidata preferente para G5 | Ver "IA: por etapas". |
 | WebFlux, Spring Cloud, Spring Batch, GraalVM native | Descartadas | Complejidad sin necesidad: los virtual threads cubren la concurrencia y no hay microservicios ni procesos por lotes. |
 | ArchUnit | Propuesta | Reglas de arquitectura adicionales si Spring Modulith no basta. |
@@ -53,8 +53,8 @@ Propuesta viva, iniciada el 26/09/2026. Donde este documento difiere de la docum
 
 | Tecnología | Estado | Motivo |
 |---|---|---|
-| Keycloak (OIDC + PKCE) | Propuesta | Login externo con MFA; estándar en empresa, pero pesado para quien despliegue su instancia. |
-| Spring Security con sesión y passkeys | Propuesta | Alternativa más sencilla. Se compara con Keycloak antes del primer dato real. |
+| Spring Security con sesión y passkeys | Aprobada (27/09/2026) | Una instalación, un propietario: sin servicio de identidad aparte. Sesión con cookie (`HttpOnly`, `Secure`, `SameSite`, con caducidad) y protección CSRF; passkeys con `userVerification = required`, comprobado en el servidor. El alta y la recuperación usan un token de corta duración y de un solo uso, generado solo con acceso administrativo al servidor. El alta y la recuperación son código propio: se mantienen mínimos y con pruebas. |
+| Keycloak (OIDC + PKCE) | Descartada por ahora | Un servicio más que instalar, actualizar, proteger y copiar en cada instancia, para funciones que un solo propietario no necesita. Se revisaría con una aplicación nativa o integraciones de terceros que necesiten tokens. |
 
 ## Frontend
 
@@ -149,5 +149,5 @@ Criterio para ampliar:
 
 - Frontend en React en lugar de Angular.
 - Arquitectura hexagonal completa solo en `ingesta`.
-- Keycloak y el resto de piezas del documento técnico pasan a ser propuestas que se deciden al llegar a cada tarea.
+- Identidad con Spring Security (sesión y passkeys) en lugar de Keycloak. El resto de piezas del documento técnico son propuestas que se deciden al llegar a cada tarea.
 - Proyecto publicado con licencia AGPL-3.0 y desplegable por terceros, con un propietario por instancia.

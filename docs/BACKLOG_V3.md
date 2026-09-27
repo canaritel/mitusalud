@@ -32,9 +32,9 @@ Los cinco documentos de análisis enumerados en el README son la referencia can�
 
 | ID | Tarea | Depende | Criterio de aceptación |
 |---|---|---|---|
-| L-08 | Keycloak con realm propio | L-03 | Registro público desactivado y comprobado automáticamente. |
-| L-09 | Authorization Code + PKCE; aplicación como Resource Server | L-08 | **Revisada (pieza 3), pendiente de implementar.** Sin token, las rutas de datos responden 401. Solo la identidad `iss` + `sub` registrada en `OwnerAccount` accede; cualquier otra identidad autenticada es rechazada en todas las rutas de datos. |
-| L-10 | MFA en la cuenta propietaria | L-08 | Segundo factor exigible y códigos de respaldo fuera del sistema. |
+| L-08 | Alta del propietario sin registro público | L-03 | **Revisada (27/09/2026: identidad con Spring Security, sesión y passkeys; ver [`STACK.md`](STACK.md)).** No existe registro público de cuentas. Mientras no hay propietario, el acceso a los datos está bloqueado. La primera passkey solo se registra con un token de corta duración y de un solo uso; generar ese token exige acceso administrativo al servidor, nunca una ruta web. Comprobado automáticamente. |
+| L-09 | Sesión con passkey; solo accede el propietario | L-08 | **Revisada (pieza 3 y 27/09/2026), pendiente de implementar.** Sin sesión, las rutas de datos responden 401. Solo la sesión del usuario registrado en `OwnerAccount` accede; cualquier otra identidad autenticada es rechazada en todas las rutas de datos. Cookie de sesión `HttpOnly`, `Secure` y `SameSite`, con caducidad; protección CSRF en las peticiones que modifican datos. |
+| L-10 | Verificación del usuario, segunda passkey y recuperación | L-08 | **Revisada (27/09/2026).** Las passkeys exigen `userVerification = required` y el servidor lo comprueba. Con la sesión abierta se puede registrar una segunda passkey. Tras perder el dispositivo, un token de corta duración y de un solo uso, generado con acceso administrativo al servidor, permite registrar una passkey nueva; la passkey perdida se revoca y se cierran todas las sesiones del propietario. |
 
 ### C. Núcleo del diario
 
@@ -86,18 +86,18 @@ Los cinco documentos de análisis enumerados en el README son la referencia can�
 
 | ID | Tarea | Depende | Criterio de aceptación |
 |---|---|---|---|
-| S-06 | Despliegue reproducible | S-04, L-11 | Aplicación, PostgreSQL y Keycloak se levantan desde cero con configuración versionada y secretos inyectados. Repetir produce el mismo resultado. |
+| S-06 | Despliegue reproducible | S-04, L-11 | Aplicación y PostgreSQL se levantan desde cero con configuración versionada y secretos inyectados. Repetir produce el mismo resultado. |
 | S-07 | Proxy TLS y renovación automática | S-05, S-06 | HTTPS válido, HSTS, protocolos obsoletos desactivados y alerta previa al vencimiento. |
-| S-08 | Escaneo externo | S-07 | Desde otra máquina, en IPv4 e IPv6, solo son públicos los puertos previstos; PostgreSQL, administración de Keycloak y Actuator quedan inaccesibles. |
+| S-08 | Escaneo externo | S-07 | Desde otra máquina, en IPv4 e IPv6, solo son públicos los puertos previstos; PostgreSQL y Actuator quedan inaccesibles. |
 
 ### C. Copias y puerta de datos reales
 
 | ID | Tarea | Depende | Criterio de aceptación |
 |---|---|---|---|
-| S-09 | Copia cifrada de lo necesario | S-06 | Incluye PostgreSQL, base y realm de Keycloak, migraciones y configuración. Periodicidad máxima de seis horas y cifrado antes de salir. |
+| S-09 | Copia cifrada de lo necesario | S-06 | Incluye PostgreSQL (también las credenciales de las passkeys), migraciones y configuración. Periodicidad máxima de seis horas y cifrado antes de salir. |
 | S-10 | Repositorio Backblaze B2 — BLOQUEADA | Autorización, S-09 | Requiere cuenta y método de pago. Clave independiente; retención de 7 diarias, 4 semanales y 12 mensuales. |
 | S-11 | Custodia fría de claves y secretos | S-10 | Dos copias en dominios de fallo distintos; ninguna reside en el servidor ni en la cuenta de Hetzner. |
-| S-12 | Restauración integral demostrada | S-11, L-18, L-29 | En entorno aislado y sin secretos vivos, recupera el artefacto inmutable exacto de L-29 —misma etiqueta y migraciones—, restaura base, realm y configuración, lee los datos sintéticos desde la interfaz y repite el escaneo externo de S-08. Registra duración y pasos manuales. |
+| S-12 | Restauración integral demostrada | S-11, L-18, L-29 | En entorno aislado y sin secretos vivos, recupera el artefacto inmutable exacto de L-29 —misma etiqueta y migraciones—, restaura base y configuración, lee los datos sintéticos desde la interfaz y repite el escaneo externo de S-08. Registra duración y pasos manuales. |
 
 ## Puerta del primer dato real
 
