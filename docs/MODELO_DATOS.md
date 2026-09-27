@@ -11,25 +11,28 @@ La revisión se detuvo en la pieza 8 al detectar que se estaba **sobrediseñando
 
 ## Implementado
 
-Peso (V2) y agua (V3) siguen estas decisiones.
+Peso (V2), agua (V3) y energía (V4) siguen estas decisiones.
 
 | # | Decisión |
 |---|---|
 | 1 | Tablas: `observation` común + una tabla de detalle por tipo, con FK compuesta `(observation_id, type)` |
 | 1b | Mapeo Java: **una sola implementación**, herencia `JOINED`. Validado: guarda ambas filas y Hibernate no envía `peso.type`. La comprobación de `@Version` sobre cambios solo del detalle se hará con la edición (pieza 6); las tablas son iguales con uno a uno, así que un cambio de mapeo no requeriría migración |
 | 2 | Identificadores UUID v7 generados con Hibernate; cronología por `observed_at` con `id` de desempate |
-| 7 | Solo unidades canónicas (`kilos` con 2 decimales, `mililitros` enteros), sin redondeos silenciosos |
+| 7 | Solo unidades canónicas (`kilos` con 2 decimales, `mililitros` enteros, `nivel` entero de 1 a 5), sin redondeos silenciosos |
+| 7b | Texto libre (nota de la energía): opcional y en la tabla de detalle de su tipo; hasta 500 unidades UTF-16 en la API y 500 caracteres en PostgreSQL; en blanco se guarda como `NULL`; el carácter nulo y las mitades sueltas de emoji se rechazan con 400, sin cambios silenciosos |
 | 9 | `observed_at TIMESTAMPTZ` en lugar de solo fecha; la API exige zona horaria y devuelve UTC |
 
 ## Condiciones futuras, revisables
 
 | # | Condición | Cuándo se revisa |
 |---|---|---|
+| 1b | Lógica común a todos los tipos (editar con revisión, borrar con auditoría, idempotencia) en un solo sitio. Hasta entonces, clases concretas por tipo y sin genéricos: se repite estructura, no lógica | Con la primera lógica que necesiten todos los tipos |
 | 3 | Sin `owner_id` en los datos; `OwnerAccount` como frontera de autorización (`iss` + `sub`), con pruebas de acceso | Con el login |
 | 4 | Idempotencia de las creaciones (`Idempotency-Key`) | Con el primer cliente real que pueda perder una respuesta |
 | 5 | Auditoría de operaciones, sin contenido | Con la primera operación que deba auditarse (borrar, exportar…) |
 | 6 | Historial de ediciones: foto del estado anterior | Con la edición |
 | 7 | Conservar lo declarado cuando haya conversión (libras, vasos) | Con la primera unidad alternativa |
+| 7b | Nota en otros tipos: decidir si pasa a `observation` | Cuando un segundo tipo necesite nota |
 | 8 | Procedencia (`source`) | **Antes del primer camino de creación no directo** (importación o IA, lo que llegue antes) |
 
 ## Pieza 1: `observation` común + tabla de detalle por tipo

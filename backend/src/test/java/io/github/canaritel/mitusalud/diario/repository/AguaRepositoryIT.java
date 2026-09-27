@@ -88,7 +88,8 @@ class AguaRepositoryIT {
 
     @Test
     void observationSigueRechazandoUnTipoDesconocido() {
-        // V3 amplía el CHECK a 'weight' y 'water', no lo quita. SQLState 23514 = violación de CHECK.
+        // V3 y V4 amplían el CHECK (ahora 'weight', 'water' y 'energy'), no lo quitan.
+        // SQLState 23514 = violación de CHECK.
         assertThatThrownBy(() -> entityManager
                 .createNativeQuery("INSERT INTO observation (id, type, observed_at) VALUES (:id, 'sleep', now())")
                 .setParameter("id", UUID.randomUUID()).executeUpdate())

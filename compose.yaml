@@ -10,6 +10,10 @@ services:
     container_name: mitusalud-postgres
     # Si el servidor se reinicia, la base de datos arranca sola.
     restart: unless-stopped
+    # Errores sin DETAIL en el log: si PostgreSQL rechaza una fila, el detalle incluye sus valores
+    # (una nota, un peso) y el log no debe guardar datos de salud (L-07).
+    # Tras cambiarlo, "docker compose up -d" recrea el contenedor; los datos del volumen se conservan.
+    command: ["postgres", "-c", "log_error_verbosity=terse"]
     environment:
       POSTGRES_DB: mitusalud
       POSTGRES_USER: mitusalud

@@ -173,7 +173,7 @@
       <button class="theme-toggle" type="button" id="tema" aria-label="Cambiar tema claro u oscuro">Tema</button>
       <h1>Guía de mitusalud</h1>
       <p>Qué hace cada pieza del proyecto y, sobre todo, por qué está así. Pensada para alguien que empieza.</p>
-      <div class="meta">Actualizada el 26/09/2026 · Estado: peso y agua con el modelo definitivo (observation + detalle), tests e integración continua</div>
+      <div class="meta">Actualizada el 27/09/2026 · Estado: peso, agua y energía con el modelo definitivo (observation + detalle), tests e integración continua</div>
     </header>
 
     <!-- 1 -->
@@ -328,12 +328,12 @@
 │   ├── ConfiguracionIdioma.java
 │   └── ManejadorErroresApi.java
 └── diario/                     <span class="c">módulo: el diario</span>
-    ├── controller/PesoController.java, AguaController.java  <span class="c">HTTP ↔ Java</span>
-    ├── service/PesoService.java, AguaService.java           <span class="c">reglas y transacciones</span>
-    ├── repository/PesoRepository.java, AguaRepository.java  <span class="c">acceso a las tablas</span>
-    ├── entity/Observacion.java, Peso.java, Agua.java        <span class="c">las filas de las tablas</span>
-    └── dto/PesoEntrada, PesoSalida, AguaEntrada, AguaSalida  <span class="c">lo que entra y sale por la API</span></pre>
-      <p>Cada tipo de registro tiene sus propias clases en cada capa. A propósito no hay un controller ni un service "genérico" para todos los tipos: con dos tipos, la repetición es pequeña y cada clase se lee sola. Se valorará generalizar si la repetición llega a estorbar.</p>
+    ├── controller/PesoController, AguaController, EnergiaController  <span class="c">HTTP ↔ Java</span>
+    ├── service/PesoService, AguaService, EnergiaService              <span class="c">reglas y transacciones</span>
+    ├── repository/PesoRepository, AguaRepository, EnergiaRepository  <span class="c">acceso a las tablas</span>
+    ├── entity/Observacion, Peso, Agua, Energia                       <span class="c">las filas de las tablas</span>
+    └── dto/PesoEntrada, PesoSalida, AguaEntrada… (una pareja por tipo)  <span class="c">lo que entra y sale por la API</span></pre>
+      <p>Cada tipo de registro tiene sus propias clases en cada capa, sin un controller ni un service "genérico": entre tipos se repite la estructura (registrar y listar), no la lógica, y así cada clase se lee sola. Cuando llegue lógica que necesiten todos los tipos (editar, borrar), irá en un solo sitio en vez de copiarse.</p>
       <p><code>MitusaludApplication</code> lleva <code>@SpringBootApplication</code>, que hace dos cosas: busca clases de Spring (<code>@RestController</code>, <code>@Service</code>…) en su paquete y en todos los que cuelgan de él, y configura automáticamente lo que encuentre en el <code>pom.xml</code> (base de datos, web…). Por eso todo el código vive por debajo de ese paquete.</p>
       <p><strong>Módulos (monolito modular).</strong> Es una sola aplicación, pero cada paquete directo (<code>diario</code>, <code>comun</code>, y en el futuro <code>ingesta</code> y <code>analitica</code>) es un módulo con fronteras: no usa las clases internas de otro módulo y es dueño de sus tablas. Si algún día un módulo necesita ser un servicio aparte, se puede extraer sin desenredar nada. Un test lo vigila (<a href="#tests">sección 8</a>).</p>
       <p><strong>Capas dentro de cada módulo.</strong> Cada tipo de clase va en su carpeta y cada capa tiene un solo trabajo:</p>
@@ -384,6 +384,9 @@ public record PesoSalida(UUID id, Instant observadoEn, BigDecimal kilos) {
       <p><code>POST /api/v1/agua</code> con <code>{"observadoEn": "2026-09-26T10:00:00+02:00", "mililitros": 250}</code> pasa por las mismas capas con sus propias clases (<code>AguaController</code>, <code>AguaService</code>…). La ruta va en singular porque el agua no se cuenta en unidades. Los mililitros son enteros entre 1 y 5000 por registro.</p>
       <div class="warn"><strong>Una trampa de Jackson</strong>Por defecto, Jackson convierte un decimal en un entero <em>truncándolo sin avisar</em>: <code>"mililitros": 250.5</code> se guardaría como 250. Lo descubrió un test al añadir el agua. Se desactiva en <code>application.properties</code> con <code>spring.jackson.deserialization.accept-float-as-int=false</code>, y ahora <code>250.5</code> responde 400.</div>
 
+      <h3>La energía</h3>
+      <p><code>POST /api/v1/energia</code> con <code>{"observadoEn": "2026-09-26T16:00:00+02:00", "nivel": 2, "nota": "tras comer"}</code> sigue el mismo recorrido. El nivel va de 1 (muy baja) a 5 (muy alta). La nota es opcional: hasta 500 unidades UTF-16 (lo que cuenta <code>String.length()</code>; algunos emojis ocupan 2), y en blanco se guarda como <code>null</code>. Se rechazan con 400 dos caracteres que JSON deja escribir pero que no son texto: el nulo (U+0000), que PostgreSQL no admite, y una mitad suelta de emoji, que el driver cambiaría por <code>?</code> sin avisar.</p>
+
       <h3>La lista: <code>GET /api/v1/pesos</code></h3>
       <p>El controller llama a <code>pesoService.listar()</code>, que abre una transacción de solo lectura y llama a <code>findAllByOrderByObservadoEnDescIdDesc()</code>. Ese método no tiene código: Spring Data lee su nombre y genera la consulta, y Hibernate une las tablas <code>peso</code> y <code>observation</code> y ordena por <code>observed_at DESC, id DESC</code>. El <code>id</code> solo desempata registros del mismo instante, siempre en el mismo orden. Cada entidad se convierte en <code>PesoSalida</code> y se devuelve la lista.</p>
 
@@ -405,6 +408,7 @@ public record PesoSalida(UUID id, Instant observadoEn, BigDecimal kilos) {
     image: postgres:17                  <span class="c"># versión Debian: ordena bien acentos y ñ</span>
     container_name: mitusalud-postgres
     restart: unless-stopped             <span class="c"># arranca sola si el servidor se reinicia</span>
+    command: ["postgres", "-c", "log_error_verbosity=terse"]  <span class="c"># errores sin datos en el log (sección 7)</span>
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Falta ...}  <span class="c"># sin contraseña, no arranca</span>
     ports:
@@ -429,9 +433,10 @@ public record PesoSalida(UUID id, Instant observadoEn, BigDecimal kilos) {
 <pre>V1__crear_tabla_peso.sql          <span class="c">← el esqueleto inicial</span>
 V2__peso_como_observacion.sql     <span class="c">← el modelo definitivo del peso</span>
 V3__agua.sql                      <span class="c">← segundo tipo de registro</span>
-V4__...sql                        <span class="c">← el siguiente cambio</span></pre>
+V4__energia.sql                   <span class="c">← tercer tipo de registro</span>
+V5__...sql                        <span class="c">← el siguiente cambio</span></pre>
       <p>Al arrancar, Flyway mira la tabla <code>flyway_schema_history</code> (la crea él) para saber qué scripts ya aplicó, y ejecuta solo los nuevos, en orden. Así cualquier instalación, hoy o dentro de un año, acaba con las mismas tablas.</p>
-      <div class="warn"><strong>Regla de oro</strong>Nunca se modifica un script ya aplicado: Flyway guarda su huella y se negaría a arrancar. Cualquier cambio va en un script nuevo. Por eso V1 sigue existiendo aunque su tabla ya no: V2 la borra y crea las nuevas. Los datos de V1 eran inventados y se descartaron en vez de migrarse.</div>
+      <div class="warn"><strong>Regla de oro</strong>Nunca se modifica un script ya aplicado: Flyway guarda su huella y se negaría a arrancar. Cualquier cambio va en un script nuevo. Por eso V1 sigue existiendo aunque su tabla ya no: V2 la borra y crea las nuevas. Los datos de V1 eran inventados y se descartaron en vez de migrarse.<br><br>Vale también para la base de test y para un simple comentario: retocar V4 cuando ya estaba aplicada en <code>mitusalud_test</code> paró los tests con <code>Migration checksum mismatch</code>.</div>
 
       <h3>Conceptos básicos de las tablas</h3>
       <p>Una tabla no solo guarda datos: también declara <strong>reglas</strong> (restricciones, en inglés <em>constraints</em>) que PostgreSQL hace cumplir siempre, venga el dato de donde venga. Si una fila incumple una regla, PostgreSQL la rechaza y no guarda nada. Estas son las que usa mitusalud:</p>
@@ -507,6 +512,17 @@ CREATE TABLE agua (
 );</pre>
       <p>Ese <code>ALTER</code> va en V3, no en V2: V2 ya estaba aplicada y una migración aplicada nunca se modifica. El nombre <code>observation_type_check</code> lo puso PostgreSQL al crear la tabla en V2 (tabla + columna + tipo de regla). Los 5000 ml son por registro, no por día.</p>
 
+      <h3>Tercer tipo: la tabla <code>energia</code> (V4)</h3>
+      <p>Los mismos dos pasos: V4 amplía otra vez el <code>CHECK</code> de <code>observation</code> (ahora <code>'weight', 'water', 'energy'</code>) y crea la tabla de detalle.</p>
+<pre>CREATE TABLE energia (
+    observation_id UUID    PRIMARY KEY,
+    type           TEXT    NOT NULL DEFAULT 'energy' CHECK (type = 'energy'),
+    nivel          INTEGER NOT NULL CHECK (nivel BETWEEN 1 AND 5),
+    nota           TEXT    CHECK (char_length(nota) &lt;= 500),   <span class="c">-- sin NOT NULL: es opcional</span>
+    FOREIGN KEY (observation_id, type) REFERENCES observation (id, type) ON DELETE CASCADE
+);</pre>
+      <p>La nota va en <code>energia</code> y no en <code>observation</code>: hoy solo la tiene la energía, y en la tabla común sería una columna siempre vacía.</p>
+
       <h3>Herencia <code>JOINED</code>: dos tablas, una clase Java</h3>
       <p>En Java, un <code>Peso</code> <em>es una</em> <code>Observacion</code>: <code>Peso extends Observacion</code>. JPA traduce esa herencia a tablas con la estrategia <code>JOINED</code>: la clase padre tiene su tabla y cada subclase la suya, unidas por la clave.</p>
 <pre>@Entity @Table(name = "observation")
@@ -520,7 +536,10 @@ public abstract class Observacion { UUID id; Instant observadoEn; Instant creado
 public class Peso extends Observacion { BigDecimal kilos; }
 
 @Entity @Table(name = "agua") @DiscriminatorValue("water") @PrimaryKeyJoinColumn(name = "observation_id")
-public class Agua extends Observacion { Integer mililitros; }</pre>
+public class Agua extends Observacion { Integer mililitros; }
+
+@Entity @Table(name = "energia") @DiscriminatorValue("energy") @PrimaryKeyJoinColumn(name = "observation_id")
+public class Energia extends Observacion { Integer nivel; String nota; }</pre>
       <p>Esto es lo que Hibernate envía a PostgreSQL al guardar un peso (sacado del log real):</p>
 <pre>insert into observation (created_at, observed_at, type, id) values (?, ?, 'weight', ?)
 insert into peso (kilos, observation_id) values (?, ?)</pre>
@@ -568,7 +587,19 @@ docker exec -it mitusalud-postgres psql -U mitusalud -c "ALTER USER mitusalud PA
         <tr><td><code>fr</code> u otro no admitido</td><td>Español (sin mezclar idiomas)</td></tr>
         <tr><td><code>de,en;q=0.8</code></td><td>Inglés: es el mejor de los que admitimos</td></tr>
       </table></div>
-      <p>Los textos no están escritos en el código. Viven en <code>messages.properties</code> (español) y <code>messages_en.properties</code> (inglés) con las mismas claves. Los mensajes de validación ("debe ser mayor que 0") vienen ya traducidos en Hibernate Validator. Añadir un idioma es crear otro archivo de textos y sumarlo a la lista de <code>ConfiguracionIdioma</code>.</p>
+      <p>Los textos no están escritos en el código. Viven en <code>messages.properties</code> (español) y <code>messages_en.properties</code> (inglés) con las mismas claves. Los mensajes de validación estándar ("debe ser mayor que 0") vienen ya traducidos en Hibernate Validator. Los propios, como "contiene caracteres no válidos", se escriben en esos mismos archivos con claves <code>validacion.*</code> y se usan desde la anotación: <code>message = "{validacion.texto.caracteresNoValidos}"</code>. Añadir un idioma es crear otro archivo de textos y sumarlo a la lista de <code>ConfiguracionIdioma</code>.</p>
+
+      <h3>Los errores no escriben datos en los logs</h3>
+      <p>Cuando PostgreSQL rechaza una fila, su error incluye por defecto la fila entera, y acaba en el log del backend (Hibernate lo escribe como aviso) y en el del propio PostgreSQL:</p>
+<pre>ERROR: new row for relation "agua" violates check constraint "agua_mililitros_check"
+  Detail: Failing row contains (01a0df87-41c1-7741-ac3b-d31f78559265, water, 5001).</pre>
+      <p>Con la nota de la energía, ahí aparecería texto libre sobre tu salud. Se corta en los dos sitios (L-07):</p>
+      <div class="table-wrap"><table>
+        <tr><th>Dónde</th><th>Ajuste</th></tr>
+        <tr><td>Backend</td><td><code>spring.datasource.hikari.data-source-properties.logServerErrorDetail=false</code> en <code>application.properties</code>: el driver deja fuera la línea <code>Detail</code>. Lo vigila <code>EnergiaRepositoryIT</code>.</td></tr>
+        <tr><td>PostgreSQL</td><td><code>log_error_verbosity=terse</code> en <code>compose.yaml</code>: el servidor escribe los errores sin <code>DETAIL</code>. Se aplica con <code>docker compose up -d</code>, que recrea el contenedor; los datos del volumen se conservan.</td></tr>
+      </table></div>
+      <p>La sentencia que falló sigue en el log, pero con huecos (<code>values ($1,$2,$3)</code>): Hibernate envía los valores aparte. Para comprobar el servidor tras un cambio, apunta la hora antes de ejecutar <code>./mvnw verify -Pbd</code> y consulta <code>docker logs --since &lt;hora&gt; mitusalud-postgres</code>: el texto inventado del test (<code>MARCADOR-NOTA-SINTETICA-7f3a</code>) no debe aparecer, y el error <code>energia_nota_check</code> sí. Nuestro workflow de CI no configura este ajuste: allí solo hay datos inventados.</p>
     </section>
 
     <!-- 8 -->
@@ -632,9 +663,20 @@ docker exec -it mitusalud-postgres psql -U mitusalud -c "ALTER USER mitusalud PA
         <tr><td>Una fila en cada tabla</td><td>Guardar agua crea su fila en <code>observation</code> y en <code>agua</code>, ambas con <code>type = 'water'</code>.</td></tr>
         <tr><td>Cada lista solo trae su tipo</td><td>Con un peso y un agua guardados, la lista de pesos solo trae el peso y la de agua solo el agua.</td></tr>
         <tr><td>Agua colgada de una observación de peso</td><td>Con SQL directo, saltándose Hibernate: PostgreSQL lo rechaza por la clave foránea compuesta (SQLState <code>23503</code>, <code>agua_observation_id_type_fkey</code>).</td></tr>
-        <tr><td>Tipo desconocido</td><td><code>observation</code> sigue rechazando un tipo que no está en la lista: V3 amplió el <code>CHECK</code>, no lo quitó.</td></tr>
+        <tr><td>Tipo desconocido</td><td><code>observation</code> sigue rechazando un tipo que no está en la lista: V3 y V4 ampliaron el <code>CHECK</code>, no lo quitaron.</td></tr>
         <tr><td>Más de 5000 ml</td><td>El <code>CHECK</code> de <code>agua</code> lo rechaza aunque se salte la validación Java.</td></tr>
         <tr><td>Punta a punta</td><td>Agua registrada por la API aparece en su lista y <strong>no</strong> en la de pesos.</td></tr>
+      </table></div>
+
+      <h3>Tests de la energía: <code>EnergiaControllerTest</code>, <code>EnergiaRepositoryIT</code>, <code>EnergiaApiIT</code></h3>
+      <p>Solo prueban lo que añade la energía; el <code>CHECK</code> común de <code>observation</code> ya lo prueba el agua.</p>
+      <div class="table-wrap"><table>
+        <tr><th>Test</th><th>Qué garantiza</th></tr>
+        <tr><td>Controller</td><td>Nivel de 1 a 5 y sin decimales; nota opcional, de 500 como máximo, sin carácter nulo ni mitades sueltas de emoji (un emoji completo sí pasa). <code>@ParameterizedTest</code> repite un test con varios valores.</td></tr>
+        <tr><td>Filas y nota en blanco</td><td>Guardar crea una fila en cada tabla con <code>type = 'energy'</code>; una nota en blanco queda como <code>NULL</code>, comprobado con SQL directo.</td></tr>
+        <tr><td>Rechazos de PostgreSQL</td><td>Energía colgada de un agua (la clave foránea es propia de cada tabla: el test del agua no la cubre), nivel 6 y nota de 501.</td></tr>
+        <tr><td>Sin rastro en los logs</td><td>Con la nota de 501, un texto inventado no aparece ni en la excepción ni en la consola (<code>OutputCaptureExtension</code> captura la consola). Se vio fallar antes de añadir <code>logServerErrorDetail=false</code>.</td></tr>
+        <tr><td>Punta a punta</td><td>Una nota con tildes, ñ y emoji vuelve igual desde PostgreSQL (<code>flush()</code> y <code>clear()</code> antes del GET, por la trampa de la caché de abajo) y no aparece en las listas de agua ni de pesos.</td></tr>
       </table></div>
       <div class="warn"><strong>La trampa de la caché de primer nivel</strong>Hibernate guarda en memoria las entidades que ya conoce dentro de una transacción. Si guardas un objeto y justo después lo buscas por id, Hibernate te devuelve <em>el mismo objeto de memoria</em> sin preguntar a la base de datos, y el test pasaría aunque PostgreSQL hubiera guardado otra cosa. Por eso el test de decimales llama a <code>entityManager.clear()</code> antes de leer: obliga a hacer un <code>SELECT</code> real. Esta trampa la detectó una revisión mirando el log de SQL: el test solo hacía un <code>INSERT</code>.</div>
 

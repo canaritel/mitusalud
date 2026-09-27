@@ -26,7 +26,7 @@ Los cinco documentos de análisis enumerados en el README son la referencia can�
 | L-04 | Flyway y migración inicial | L-03 | Una base vacía crea `owner_account` y su índice singleton; ejecutar migraciones dos veces es seguro. |
 | L-05 | Secretos fuera del repositorio | L-01 | `.env.example` no contiene valores, `.gitignore` cubre el real y el escaneo de secretos queda limpio. |
 | L-06 | CI: compilar, probar y escanear | L-02, L-05 | Cada cambio ejecuta build, pruebas y escaneos de secretos y dependencias. |
-| L-07 | Logs estructurados sin contenido personal | L-02 | Una prueba falla si valores o texto de observaciones aparecen en logs. |
+| L-07 | Logs estructurados sin contenido personal | L-02 | Una prueba falla si valores o texto de observaciones aparecen en logs. **Parcial:** los errores de PostgreSQL ya no escriben la fila rechazada. En el log del backend, con `logServerErrorDetail=false`, lo vigila un test sobre la nota de la energía (se vio fallar sin el ajuste). En el del servidor, con `log_error_verbosity=terse`, se comprobó a mano el 27/09/2026 en el servidor de desarrollo: una nota inventada ya no aparece y el error sigue registrado. Cada instalación lo recibe con `compose.yaml`; la CI no lo aplica (solo datos inventados). **Pendiente:** logs estructurados. |
 
 ### B. Identidad
 
@@ -54,7 +54,7 @@ Los cinco documentos de análisis enumerados en el README son la referencia can�
 | ID | Tarea | Depende | Criterio de aceptación |
 |---|---|---|---|
 | L-19 | Alta: zona horaria, unidades, peso y altura | L-14 | Zona horaria y una medición fechada de altura obligatorias; peso opcional. Peso y altura son observaciones, no campos sobrescritos del perfil. **Revisada (pieza 7):** en la fase actual solo unidades canónicas; la preferencia de unidades alternativas (lb) activa la regla de conservar lo declarado de la pieza 7 de [`MODELO_DATOS.md`](MODELO_DATOS.md). |
-| L-20 | Registros directos: agua, peso y energía | L-15 | Se escriben confirmados; energía admite varias mediciones diarias con hora y nota. **Revisada (pieza 7):** en la fase actual, agua en mililitros enteros y peso en kilos con 2 decimales, sin conversiones. **Implementado:** peso y agua (registrar y listar). **Pendiente:** energía; el agua en vasos no se da por terminada hasta conservar cantidad declarada, unidad y tamaño aplicado (`ml_por_unidad`). |
+| L-20 | Registros directos: agua, peso y energía | L-15 | Se escriben confirmados; energía admite varias mediciones diarias con hora y nota. **Revisada (pieza 7):** en la fase actual, agua en mililitros enteros y peso en kilos con 2 decimales, sin conversiones. **Implementado:** peso, agua y energía con nota opcional (registrar y listar). **Pendiente:** el agua en vasos no se da por terminada hasta conservar cantidad declarada, unidad y tamaño aplicado (`ml_por_unidad`). |
 | L-21 | `MedicationPlan` y `SupplementPlan` | L-14 | Tablas separadas; `indicatedBy` opcional en suplementos. Las pautas finalizadas no se borran. |
 | L-22 | Tomas mediante `IntakeDetail` | L-21 | Exclusividad y FK compuestas; solo registra tomas reales, nunca la ausencia de una toma. |
 | L-23 | `ContextPeriod` | L-14 | `type`, `startedAt`, `endedAt`, `note` y `source`; fin no anterior al inicio, fin nulo significa activo y se permiten periodos simultáneos. |
@@ -121,6 +121,6 @@ Hasta entonces solo se permiten datos sintéticos.
 
 - L-01: completada. Repositorio, README, límites y licencia AGPL-3.0 establecidos.
 - L-02 a L-29: pendientes.
-- Peso y agua con el modelo definitivo (`observation` + detalle por tipo, UUID v7, `observed_at`): registrar y listar. Cumple parcialmente L-14 y L-20; idempotencia (L-15), auditoría (L-16) y revisiones (L-17) siguen pendientes como condiciones futuras de [`MODELO_DATOS.md`](MODELO_DATOS.md).
+- Peso, agua y energía con el modelo definitivo (`observation` + detalle por tipo, UUID v7, `observed_at`): registrar y listar. Cumple parcialmente L-07, L-14 y L-20; idempotencia (L-15), auditoría (L-16) y revisiones (L-17) siguen pendientes como condiciones futuras de [`MODELO_DATOS.md`](MODELO_DATOS.md).
 - S-01 y S-10: bloqueadas por gasto.
 - Resto de tareas de servidor: pendientes de sus dependencias.
