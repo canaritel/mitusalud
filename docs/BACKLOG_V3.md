@@ -25,7 +25,7 @@ Los cinco documentos de análisis enumerados en el README son la referencia can�
 | L-03 | Compose local: aplicación y PostgreSQL | L-02 | `docker compose up` levanta ambos. PostgreSQL escucha en `127.0.0.1:5432`, nunca en `0.0.0.0`. |
 | L-04 | Flyway y migración inicial | L-03 | Una base vacía crea `owner_account` y su índice singleton; ejecutar migraciones dos veces es seguro. |
 | L-05 | Secretos fuera del repositorio | L-01 | `.env.example` no contiene valores, `.gitignore` cubre el real y el escaneo de secretos queda limpio. |
-| L-06 | CI: compilar, probar y escanear | L-02, L-05 | Cada cambio ejecuta build, pruebas y escaneos de secretos y dependencias. |
+| L-06 | CI: compilar, probar y escanear | L-02, L-05 | Cada cambio ejecuta build, pruebas y escaneos de secretos y dependencias. **Parcial:** en cada push y pull request, build y pruebas del backend (con PostgreSQL) y compilación del frontend. **Pendiente:** escaneos de secretos y dependencias. |
 | L-07 | Logs estructurados sin contenido personal | L-02 | Una prueba falla si valores o texto de observaciones aparecen en logs. **Parcial:** los errores de PostgreSQL ya no escriben la fila rechazada. En el log del backend, con `logServerErrorDetail=false`, lo vigila un test sobre la nota de la energía (se vio fallar sin el ajuste). En el del servidor, con `log_error_verbosity=terse`, se comprobó a mano el 27/09/2026 en el servidor de desarrollo: una nota inventada ya no aparece y el error sigue registrado. Cada instalación lo recibe con `compose.yaml`; la CI no lo aplica (solo datos inventados). **Pendiente:** logs estructurados. |
 
 ### B. Identidad

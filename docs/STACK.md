@@ -59,7 +59,7 @@ Propuesta viva, iniciada el 26/09/2026. Donde este documento difiere de la docum
 
 | Tecnología | Estado | Motivo |
 |---|---|---|
-| React + TypeScript | Aprobada | Interfaz por componentes con tipado estático. |
+| React + TypeScript | Aprobada | Interfaz por componentes con tipado estático. Elegida el 27/09/2026 frente a Thymeleaf y Vaadin Flow por la interfaz interactiva en el móvil y la posible captura sin conexión (G2); ver la guía, sección 11. |
 | Vite | Aprobada | Desarrollo y build del frontend. |
 | SPA sin Next.js | Aprobada | El backend ya es Spring; un servidor Node adicional no aporta nada. |
 | React Router | Propuesta | Cuando haya más de una pantalla. |
@@ -84,7 +84,7 @@ Propuesta viva, iniciada el 26/09/2026. Donde este documento difiere de la docum
 | Tecnología | Estado | Motivo |
 |---|---|---|
 | Docker + Docker Compose | Aprobada | Cualquiera levanta su instancia con `docker compose up`. |
-| GitHub Actions | Aprobada | En cada push y pull request compila y ejecuta todos los tests, incluidos los de base de datos contra un PostgreSQL desechable (service container). Gratis en repos públicos. |
+| GitHub Actions | Aprobada | En cada push y pull request compila y ejecuta todos los tests, incluidos los de base de datos contra un PostgreSQL desechable (service container), y compila el frontend. Gratis en repos públicos. |
 | Caddy | Propuesta | Proxy con HTTPS automático, al desplegar en el VPS. |
 | Restic + Backblaze B2 | Propuesta | Copias cifradas fuera del servidor, antes del primer dato real. |
 

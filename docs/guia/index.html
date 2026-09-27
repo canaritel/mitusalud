@@ -711,7 +711,7 @@ docker exec -it mitusalud-postgres psql -U mitusalud -c "ALTER USER mitusalud PA
     <!-- 9 -->
     <section id="ci">
       <h2>9. Integración continua (GitHub Actions)</h2>
-      <p>En cada push a <code>main</code> y en cada pull request, GitHub compila el backend y ejecuta <strong>todos</strong> los tests en una máquina limpia, incluidos los de base de datos. Si algo falla, el commit aparece con una ✗ roja y GitHub avisa por email. El resultado se ve en el badge del README.</p>
+      <p>En cada push a <code>main</code> y en cada pull request, GitHub compila el backend y ejecuta <strong>todos</strong> los tests en una máquina limpia, incluidos los de base de datos, y en paralelo compila el frontend. Si algo falla, el commit aparece con una ✗ roja y GitHub avisa por email. El resultado se ve en el badge del README.</p>
 
       <h3>Qué es CI (y qué no)</h3>
       <p><strong>CI</strong> (<em>Continuous Integration</em>, integración continua) es una práctica: integrar los cambios en la rama principal a menudo y <strong>verificar cada uno automáticamente</strong> (compilar y pasar los tests). Así un error se detecta en minutos, cuando aún recuerdas qué cambiaste, y no semanas después.</p>
@@ -721,10 +721,10 @@ docker exec -it mitusalud-postgres psql -U mitusalud -c "ALTER USER mitusalud PA
         <tr><th>Término</th><th>Qué es</th><th>En mitusalud</th></tr>
         <tr><td><em>Workflow</em></td><td>Un proceso automático, definido en un archivo YAML dentro de <code>.github/workflows/</code>.</td><td><code>ci.yml</code> (nombre: CI)</td></tr>
         <tr><td><em>Trigger</em> (<code>on:</code>)</td><td>Qué lo dispara.</td><td>Push a <code>main</code> y pull requests</td></tr>
-        <tr><td><em>Job</em></td><td>Un bloque de trabajo que corre en una máquina.</td><td><code>backend</code></td></tr>
+        <tr><td><em>Job</em></td><td>Un bloque de trabajo que corre en una máquina.</td><td><code>backend</code> y <code>frontend</code>, en paralelo</td></tr>
         <tr><td><em>Runner</em></td><td>La máquina (virtual, limpia) que GitHub presta para ejecutar el job.</td><td><code>ubuntu-latest</code></td></tr>
         <tr><td><em>Step</em></td><td>Cada paso del job, en orden.</td><td>Descargar código, instalar Java, ejecutar tests</td></tr>
-        <tr><td><em>Action</em></td><td>Un paso reutilizable publicado por otros.</td><td><code>actions/checkout</code>, <code>actions/setup-java</code></td></tr>
+        <tr><td><em>Action</em></td><td>Un paso reutilizable publicado por otros.</td><td><code>actions/checkout</code>, <code>actions/setup-java</code>, <code>actions/setup-node</code></td></tr>
         <tr><td><em>Service container</em></td><td>Un contenedor auxiliar que vive mientras dura el job.</td><td>El PostgreSQL desechable</td></tr>
       </table></div>
 
@@ -763,6 +763,7 @@ steps:
       <div class="note"><strong>¿Por qué no Testcontainers?</strong>Testcontainers arranca PostgreSQL desde el código de los tests y añade una dependencia al proyecto. GitHub Actions ya ofrece los <em>service containers</em> con unas líneas de configuración, así que en CI no hace falta. Testcontainers sigue como propuesta por si algún día hay Docker en el equipo de desarrollo.</div>
       <div class="note"><strong>Idioma de la máquina</strong>Los servidores de GitHub están en inglés y tu PC quizá en español. Los tests esperan mensajes en español y pasan igual, porque el idioma lo decide la petición (<code>ConfiguracionIdioma</code>), no la máquina. Se comprobó antes de subir el workflow ejecutando los tests con la JVM en inglés.</div>
       <p><code>-B</code> (<em>batch mode</em>) le dice a Maven que no hay nadie delante: sin colores ni barras de progreso, así los logs de GitHub son legibles.</p>
+      <p>El job <code>frontend</code> corre en otra máquina, sin PostgreSQL: instala Node 24 con <code>actions/setup-node</code>, ejecuta <code>npm ci</code> (instala exactamente las versiones de <code>package-lock.json</code> y nunca lo modifica) y <code>npm run build</code>, que falla si hay errores de TypeScript. El frontend aún no tiene tests.</p>
 
       <h3>Usar GitHub Actions en el día a día</h3>
       <ol class="steps">
@@ -854,6 +855,8 @@ npm run dev                  <span class="c"># y abre http://127.0.0.1:5173</spa
         <tr><td>MapStruct y otros mapeadores</td><td>Para convertir un par de records basta un método de tres líneas, a la vista.</td><td>No se prevé.</td></tr>
         <tr><td>Lombok</td><td>No ha hecho falta: los DTOs son records y la entidad tiene pocos getters. Generar código oculto dificulta entender qué hay.</td><td>Si las entidades crecen mucho.</td></tr>
         <tr><td>Hexagonal completa en <code>diario</code></td><td>Para un CRUD obliga a triplicar clases y mapeos.</td><td>Se usará en <code>ingesta</code>, donde hay piezas intercambiables reales (proveedor de IA, almacenamiento).</td></tr>
+        <tr><td>Thymeleaf (páginas HTML generadas por Spring)</td><td>Alternativa razonable, con menos piezas, para una aplicación de formularios siempre conectada. Se eligió React por la interfaz interactiva en el móvil y por la posible captura sin conexión (G2), que encaja mejor con una aplicación que ya funciona en el navegador.</td><td>Si la captura sin conexión dejara de interesar y se quisiera reducir tecnologías.</td></tr>
+        <tr><td>Vaadin Flow</td><td>Permite escribir la interfaz en Java. Su gran ventaja, no escribir endpoints REST, pesa menos porque la API ya existe, y añade otro framework con su propio funcionamiento entre navegador y servidor.</td><td>No se prevé.</td></tr>
         <tr><td>Keycloak</td><td>Todavía no hay login.</td><td>Antes del primer dato real, comparándolo con Spring Security solo.</td></tr>
       </table></div>
     </section>
