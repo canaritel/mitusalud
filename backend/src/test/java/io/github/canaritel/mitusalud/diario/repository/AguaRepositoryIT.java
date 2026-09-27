@@ -41,7 +41,7 @@ class AguaRepositoryIT {
 
     @Test
     void guardarAguaCreaUnaFilaEnCadaTabla() {
-        UUID id = aguaRepository.saveAndFlush(new Agua(MOMENTO, 250)).getId();
+        UUID id = aguaRepository.saveAndFlush(new Agua(MOMENTO, 250, UUID.randomUUID())).getId();
 
         Object tipoEnObservation = entityManager
                 .createNativeQuery("SELECT type FROM observation WHERE id = :id")
@@ -58,7 +58,7 @@ class AguaRepositoryIT {
     @Test
     void cadaListaSoloTraeSuTipo() {
         UUID idPeso = pesoRepository.save(new Peso(MOMENTO, new BigDecimal("72.35"))).getId();
-        UUID idAgua = aguaRepository.save(new Agua(MOMENTO, 250)).getId();
+        UUID idAgua = aguaRepository.save(new Agua(MOMENTO, 250, UUID.randomUUID())).getId();
         entityManager.flush();
         entityManager.clear();
 
@@ -102,7 +102,7 @@ class AguaRepositoryIT {
 
     @Test
     void laBaseDeDatosRechazaMasDe5000Mililitros() {
-        assertThatThrownBy(() -> aguaRepository.saveAndFlush(new Agua(MOMENTO, 5001)))
+        assertThatThrownBy(() -> aguaRepository.saveAndFlush(new Agua(MOMENTO, 5001, UUID.randomUUID())))
                 .rootCause()
                 .isInstanceOfSatisfying(SQLException.class, causa -> {
                     assertThat(causa.getSQLState()).isEqualTo("23514");

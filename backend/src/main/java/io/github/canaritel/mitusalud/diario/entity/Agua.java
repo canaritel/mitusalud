@@ -7,6 +7,7 @@ import jakarta.persistence.PrimaryKeyJoinColumn;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
+import java.util.UUID;
 
 /**
  * Un registro de agua: una observación de tipo "water" más su fila en la tabla {@code agua}.
@@ -25,8 +26,9 @@ public class Agua extends Observacion {
     protected Agua() {
     }
 
-    public Agua(Instant observadoEn, Integer mililitros) {
-        super(observadoEn);
+    // El agua siempre se crea con la clave de su operación (docs/MODELO_DATOS.md, pieza 4).
+    public Agua(Instant observadoEn, Integer mililitros, UUID claveIdempotencia) {
+        super(observadoEn, claveIdempotencia);
         this.mililitros = mililitros;
     }
 

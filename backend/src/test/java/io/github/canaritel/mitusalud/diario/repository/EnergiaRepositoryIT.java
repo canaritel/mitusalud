@@ -77,7 +77,7 @@ class EnergiaRepositoryIT {
 
     @Test
     void postgresqlImpideColgarUnaEnergiaDeUnaObservacionDeAgua() {
-        UUID idAgua = aguaRepository.saveAndFlush(new Agua(MOMENTO, 250)).getId();
+        UUID idAgua = aguaRepository.saveAndFlush(new Agua(MOMENTO, 250, UUID.randomUUID())).getId();
 
         // Cada tabla de detalle tiene su propia FK: esta prueba detectaría que faltara o estuviera mal escrita.
         // SQLState 23503 = violación de clave foránea.

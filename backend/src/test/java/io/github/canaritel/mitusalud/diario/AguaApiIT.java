@@ -10,6 +10,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 import static org.hamcrest.Matchers.contains;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -34,6 +36,7 @@ class AguaApiIT {
     @Test
     void aguaRegistradaPorLaApiApareceEnSuListaYNoEnLaDePesos() throws Exception {
         String respuesta = mockMvc.perform(post("/api/v1/agua")
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"observadoEn": "2026-09-26T10:00:00+02:00", "mililitros": 330}

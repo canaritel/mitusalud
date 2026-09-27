@@ -48,3 +48,35 @@ li {
 .error {
   color: light-dark(#b3261e, #ff8a80);
 }
+
+/* Registro de agua: botones y operaciones sin confirmar. */
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.acciones form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.acciones input {
+  width: 6rem;
+}
+
+button,
+input {
+  font: inherit;
+  padding: 0.4rem 0.8rem;
+}
+
+.pendiente {
+  margin: 0.25rem 0;
+}
+
+.pendiente.sin-confirmar,
+.pendiente.rechazado {
+  color: light-dark(#b3261e, #ff8a80);
+}

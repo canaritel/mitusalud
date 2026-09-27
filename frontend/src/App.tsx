@@ -1,4 +1,5 @@
 import { useGet, type Agua, type Energia, type Peso, type Resultado } from './api'
+import { RegistroAgua } from './RegistroAgua'
 
 // 'es-ES' decide el formato ("27 sept 2026, 10:30"); la hora sale en la zona horaria del navegador.
 const formatoMomento = new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium', timeStyle: 'short' })
@@ -11,15 +12,15 @@ function momento(observadoEn: string) {
 // Mensaje de un apartado mientras carga, si falla o si está vacío. Con datos, no muestra nada.
 function Aviso({ resultado }: { resultado: Resultado<unknown> }) {
   if (resultado.estado === 'cargando') return <p>Cargando…</p>
-  if (resultado.estado === 'error') return <p className="error">No se ha podido cargar. ¿Está arrancado el backend?</p>
+  if (resultado.estado === 'error') return <p className="error">No se ha podido cargar la lista. Comprueba la conexión y recarga la página.</p>
   if (resultado.datos.length === 0) return <p>Todavía no hay registros.</p>
   return null
 }
 
 export default function App() {
-  const pesos = useGet<Peso>('/api/v1/pesos')
-  const agua = useGet<Agua>('/api/v1/agua')
-  const energia = useGet<Energia>('/api/v1/energia')
+  const [pesos] = useGet<Peso>('/api/v1/pesos')
+  const [agua, recargarAgua] = useGet<Agua>('/api/v1/agua')
+  const [energia] = useGet<Energia>('/api/v1/energia')
 
   return (
     <main>
@@ -44,6 +45,7 @@ export default function App() {
 
       <section>
         <h2>Agua</h2>
+        <RegistroAgua alConfirmar={recargarAgua} />
         <Aviso resultado={agua} />
         {agua.estado === 'ok' && (
           <ul>

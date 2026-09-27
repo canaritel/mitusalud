@@ -10,6 +10,7 @@ import jakarta.persistence.Table;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 /**
@@ -44,13 +45,25 @@ public abstract class Observacion {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant creadoEn;
 
+    // Clave de la operación que creó el registro (cabecera Idempotency-Key). Null en los registros
+    // anteriores a V5 y en los tipos que aún no la exigen. No cambia nunca.
+    @Column(name = "idempotency_key", updatable = false)
+    private UUID claveIdempotencia;
+
     // JPA necesita un constructor sin argumentos para crear objetos al leer de la base de datos.
     protected Observacion() {
     }
 
     protected Observacion(Instant observadoEn) {
-        this.observadoEn = observadoEn;
+        this(observadoEn, null);
+    }
+
+    protected Observacion(Instant observadoEn, UUID claveIdempotencia) {
+        // PostgreSQL guarda hasta microsegundos: se trunca aquí para que el instante en memoria
+        // sea exactamente el guardado y dos peticiones del mismo instante se comparen bien.
+        this.observadoEn = observadoEn.truncatedTo(ChronoUnit.MICROS);
         this.creadoEn = Instant.now();
+        this.claveIdempotencia = claveIdempotencia;
     }
 
     public UUID getId() {
@@ -63,5 +76,9 @@ public abstract class Observacion {
 
     public Instant getCreadoEn() {
         return creadoEn;
+    }
+
+    public UUID getClaveIdempotencia() {
+        return claveIdempotencia;
     }
 }
